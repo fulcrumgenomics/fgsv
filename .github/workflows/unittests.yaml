@@ -1,0 +1,20 @@
+name: unit tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v12
+        with:
+          java-version: adopt-openj9@1.8.0-292
+      - name: Unit Tests
+        run: |
+          set -e
+          ./mill _.test
