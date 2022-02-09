@@ -24,4 +24,7 @@ case class GenomicRange(refIndex: Int, start: Int, end: Int) extends Ordered[Gen
     else if (this.start != that.start) this.start - that.start
     else this.end - that.end
   }
+
+  /** The length of the genomic range in bp. */
+  def length: Int = this.end - this.start + 1
 }
