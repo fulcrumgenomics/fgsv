@@ -18,7 +18,7 @@ import scala.collection.mutable
 
 @clp(group=ClpGroups.All, description=
   """
-    |Collates a pileup of putative structural variant calls.
+    |Collates a pileup of putative structural variant supporting reads.
   """)
 class SVPileup
 ( @arg(flag='i', doc="The input query sorted or grouped BAM") input: PathToBam,
@@ -46,7 +46,7 @@ class SVPileup
     val breakpointToId = new BreakpointToIdMap()
     Bams.templateIterator(source)
       .map(t => {progress.record(t.r1.getOrElse(t.r2.get)); t})
-      .filter(template => (template.r1 ++ template.r2).forall(primaryOk))
+      .filter(template => template.primaryReads.forall(primaryOk))
       .foreach { template =>
         // Find the breakpoints
         val templateBreakpoints = findBreakpoints(
@@ -95,8 +95,9 @@ class SVPileup
   /** Coalesce the breakpoint counts and write them. */
   private def writeBreakpoints(breakpoints: SimpleCounter[PutativeBreakpoint], dict: SequenceDictionary): Unit = {
     val writer = Io.toWriter(output)
-    writer.write("id\tleft_contig\tleft_pos\tright_contig\tright_pos\tsame_strand\ttotal")
-    EvidenceType.values.foreach(svType => writer.write(s"\t${svType.snakeName}"))
+    val fields = Seq("id", "left_contig", "left_pos", "right_contig", "right_pos", "same_strand", "total") ++
+      EvidenceType.values.map(_.snakeName)
+    writer.write(fields.mkString("", "\t", "\n")
     writer.write('\n')
     val breakpointsIter = breakpoints.toIndexedSeq
       .sortBy { case (b, _) => (b.leftRefIndex, b.rightRefIndex, b.leftPos, b.rightPos, b.sameStrand)}
