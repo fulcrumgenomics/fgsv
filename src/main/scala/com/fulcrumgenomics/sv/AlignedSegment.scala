@@ -99,7 +99,7 @@ object AlignedSegment extends LazyLogging {
     require(supplementals.nonEmpty)
     val primarySegment = AlignedSegment(primary)
     val supplSegments  = supplementals.map(AlignedSegment(_))
-    this.segmentsFrom(primary=primarySegment, supplementals=supplSegments, readLength=primary.length, minUniqueBasesToAdd=minUniqueBasesToAdd)
+    segmentsFrom(primary=primarySegment, supplementals=supplSegments, readLength=primary.length, minUniqueBasesToAdd=minUniqueBasesToAdd)
   }
 
 
@@ -185,7 +185,7 @@ object AlignedSegment extends LazyLogging {
       }
       // reverse the R2 segments as the first segments in R2 are last segments in the template when starting from the start
       // of R1, also need to switch strand as we expect FR pair
-      mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments, numOverlappingSegments=1)
+      mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments)
     }
   }
 
@@ -209,7 +209,7 @@ object AlignedSegment extends LazyLogging {
   @tailrec
   def mergeAlignedSegments(r1Segments: IndexedSeq[AlignedSegment],
                            r2Segments: IndexedSeq[AlignedSegment],
-                           numOverlappingSegments: Int): IndexedSeq[AlignedSegment] = {
+                           numOverlappingSegments: Int = 1): IndexedSeq[AlignedSegment] = {
     if (numOverlappingSegments > r1Segments.length || numOverlappingSegments > r2Segments.length) {
       r1Segments ++ r2Segments // no overlapping segments
     } else {
@@ -231,9 +231,16 @@ object AlignedSegment extends LazyLogging {
 }
 
 sealed trait SegmentOrigin extends EnumEntry {
+  import SegmentOrigin._
+
   /** Returns whether this origin and the other origin are R1 and R2, or R2 and R1, respectively.
    * This treats Both as being from either R1 and R2. */
   def isPairedWith(other: SegmentOrigin): Boolean = this != other || (this == SegmentOrigin.Both && other == SegmentOrigin.Both)
+
+  /** Returns true if both `this` and `that` represent a single read and the two reads are different (i.e. R1 and R2). */
+  def isInterRead(that: SegmentOrigin): Boolean = {
+    this != Both && that != Both && this != that
+  }
 }
 
 /** Enumeration for where a given [[AlignedSegment]] origintes. */

@@ -13,7 +13,7 @@ case class GenomicRange(refIndex: Int, start: Int, end: Int) extends Ordered[Gen
 
   /** Returns the union of the two genomic intervals.  The intervals must overlap. */
   def union(other: GenomicRange): GenomicRange = {
-    require(this.overlaps(other))
+    require(this.overlaps(other), s"Can't union non-overlapping ranges: ${this} and ${other}")
     this.copy(start = Math.min(this.start, other.start), end = Math.max(this.end, other.end))
   }
 
@@ -27,4 +27,6 @@ case class GenomicRange(refIndex: Int, start: Int, end: Int) extends Ordered[Gen
 
   /** The length of the genomic range in bp. */
   def length: Int = this.end - this.start + 1
+
+  override def toString: String =  s"${refIndex}:${start}-${end}"
 }

@@ -12,36 +12,36 @@ class SvPileupTest extends UnitSpec {
     range=GenomicRange(refIndex=refIndex, start=start, end=end)
   )
 
-  "SvPileup.determineInterContigBreakpiont" should "determine if two alignment segments are an inter-contig breakpoint" in {
+  "SvPileup.determineInterContigBreakpoint" should "determine if two alignment segments are an inter-contig breakpoint" in {
     val chr1 = fromRangeOnly(refIndex=0, start=1, end=100)
     val chr2 = fromRangeOnly(refIndex=1, start=1, end=100)
 
     // Same contig
-    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr1).isEmpty shouldBe true
+    SvPileup.determineInterContigBreakpoint(seg1=chr1, seg2=chr1).isEmpty shouldBe true
 
     // Different contig
-    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr2).value shouldBe BreakpointEvidence(
+    SvPileup.determineInterContigBreakpoint(seg1=chr1, seg2=chr2).value shouldBe BreakpointEvidence(
       chr1, chr2, SplitReadInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr2, seg2=chr1).value shouldBe BreakpointEvidence(
+    SvPileup.determineInterContigBreakpoint(seg1=chr2, seg2=chr1).value shouldBe BreakpointEvidence(
       chr2, chr1, SplitReadInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr2.copy(origin=ReadTwo)).value shouldBe BreakpointEvidence(
+    SvPileup.determineInterContigBreakpoint(seg1=chr1, seg2=chr2.copy(origin=ReadTwo)).value shouldBe BreakpointEvidence(
       chr1, chr2.copy(origin=ReadTwo), ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr2.copy(origin=ReadTwo), seg2=chr1).value shouldBe BreakpointEvidence(
+    SvPileup.determineInterContigBreakpoint(seg1=chr2.copy(origin=ReadTwo), seg2=chr1).value shouldBe BreakpointEvidence(
       chr2.copy(origin=ReadTwo), chr1, ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr2.copy(origin=Both)).value shouldBe BreakpointEvidence(
+    SvPileup.determineInterContigBreakpoint(seg1=chr1, seg2=chr2.copy(origin=Both)).value shouldBe BreakpointEvidence(
       chr1, chr2.copy(origin=Both), ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr2.copy(origin=Both), seg2=chr1).value shouldBe BreakpointEvidence(
+    SvPileup.determineInterContigBreakpoint(seg1=chr2.copy(origin=Both), seg2=chr1).value shouldBe BreakpointEvidence(
       chr2.copy(origin=Both), chr1, ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr1.copy(origin=Both), seg2=chr2.copy(origin=Both)).value shouldBe BreakpointEvidence(
+    SvPileup.determineInterContigBreakpoint(seg1=chr1.copy(origin=Both), seg2=chr2.copy(origin=Both)).value shouldBe BreakpointEvidence(
       chr1.copy(origin=Both), chr2.copy(origin=Both), ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr2.copy(origin=Both), seg2=chr1.copy(origin=Both)).value shouldBe BreakpointEvidence(
+    SvPileup.determineInterContigBreakpoint(seg1=chr2.copy(origin=Both), seg2=chr1.copy(origin=Both)).value shouldBe BreakpointEvidence(
       chr2.copy(origin=Both), chr1.copy(origin=Both), ReadPairInterContig
     )
   }
@@ -52,28 +52,28 @@ class SvPileupTest extends UnitSpec {
     val later   = fromRangeOnly(refIndex=1, start=150, end=200)
 
     // same segment
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=earlier, maxInnerDistance=0).isEmpty shouldBe true
+    SvPileup.determineIntraContigBreakpoint(seg1=earlier, seg2=earlier, maxWithinReadDistance=0, maxBetweenReadDistance=0).isEmpty shouldBe true
 
     // overlapping segments
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=overlap, maxInnerDistance=0).isEmpty shouldBe true
+    SvPileup.determineIntraContigBreakpoint(seg1=earlier, seg2=overlap, maxWithinReadDistance=0, maxBetweenReadDistance=0).isEmpty shouldBe true
 
     // non-overlapping segments
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later, maxInnerDistance=49).value shouldBe BreakpointEvidence(
+    SvPileup.determineIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=49, maxBetweenReadDistance=49).value shouldBe BreakpointEvidence(
       earlier, later, SplitReadIntraContig
     )
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxInnerDistance=49).value shouldBe BreakpointEvidence(
+    SvPileup.determineIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=49, maxBetweenReadDistance=49).value shouldBe BreakpointEvidence(
       earlier, later.copy(origin=ReadTwo), ReadPairIntraContig
     )
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later.copy(origin=Both), maxInnerDistance=49).value shouldBe BreakpointEvidence(
-      earlier, later.copy(origin=Both), ReadPairIntraContig
+    SvPileup.determineIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=Both), maxWithinReadDistance=49, maxBetweenReadDistance=49).value shouldBe BreakpointEvidence(
+      earlier, later.copy(origin=Both), SplitReadIntraContig
     )
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier.copy(origin=Both), seg2=later, maxInnerDistance=49).value shouldBe BreakpointEvidence(
-      earlier.copy(origin=Both), later, ReadPairIntraContig
+    SvPileup.determineIntraContigBreakpoint(seg1=earlier.copy(origin=Both), seg2=later, maxWithinReadDistance=49, maxBetweenReadDistance=49).value shouldBe BreakpointEvidence(
+      earlier.copy(origin=Both), later, SplitReadIntraContig
     )
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier.copy(origin=Both), seg2=later.copy(origin=Both), maxInnerDistance=49).value shouldBe BreakpointEvidence(
-      earlier.copy(origin=Both), later.copy(origin=Both), ReadPairIntraContig
+    SvPileup.determineIntraContigBreakpoint(seg1=earlier.copy(origin=Both), seg2=later.copy(origin=Both), maxWithinReadDistance=49, maxBetweenReadDistance=49).value shouldBe BreakpointEvidence(
+      earlier.copy(origin=Both), later.copy(origin=Both), SplitReadIntraContig
     )
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later, maxInnerDistance=50).isEmpty shouldBe true
+    SvPileup.determineIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=50, maxBetweenReadDistance=50).isEmpty shouldBe true
   }
 
   "SvPileup.determineOddPairOrientation" should "determine if two alignment segments have an odd read-pair orientation" in {

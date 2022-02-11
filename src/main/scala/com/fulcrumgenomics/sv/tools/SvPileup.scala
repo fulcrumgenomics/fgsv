@@ -191,12 +191,9 @@ object SvPileup extends LazyLogging {
 
     if (segments.length == 1) IndexedSeq.empty else {
       segments.iterator.sliding(2).flatMap { case Seq(seg1, seg2) =>
-        var result: Option[BreakpointEvidence] = determineInterContigBreakpoint(seg1=seg1, seg2=seg2)
-        if (result.isEmpty) {
-          val maxInnerDistance = if (seg1.origin != seg2.origin) maxAlignedSegmentInnerDistance else maxReadPairInnerDistance
-          result = determineIntraContigBreakpoint(seg1=seg1, seg2=seg2, maxInnerDistance=maxInnerDistance)
-        }
-        if (result.isEmpty) result = determineOddPairOrientation(seg1=seg1, seg2=seg2)
+        var result                 = determineInterContigBreakpoint(seg1, seg2)
+        if (result.isEmpty) result = determineIntraContigBreakpoint(seg1, seg2, maxAlignedSegmentInnerDistance , maxReadPairInnerDistance)
+        if (result.isEmpty) result = determineOddPairOrientation(seg1, seg2)
         result
       }
       .toIndexedSeq
@@ -223,19 +220,27 @@ object SvPileup extends LazyLogging {
    *
    * @param seg1 the first alignment segment
    * @param seg2 the second alignment segment
-   * @param maxInnerDistance the maximum "inner distance" allowed between the two segments, otherwise return a putative
-   *                         breakpoint
+   * @param maxWithinReadDistance the maximum distance between segments if they are from the same read
+   * @param maxBetweenReadDistance the maximum distance between segments if they are from different reads
    */
-  def determineIntraContigBreakpoint(seg1: AlignedSegment, seg2: AlignedSegment, maxInnerDistance: Int): Option[BreakpointEvidence] = {
+  def determineIntraContigBreakpoint(seg1: AlignedSegment,
+                                     seg2: AlignedSegment,
+                                     maxWithinReadDistance: Int,
+                                     maxBetweenReadDistance: Int): Option[BreakpointEvidence] = {
     require(seg1.range.refIndex == seg2.range.refIndex)
+
+    val (maxDistance, evidence) = {
+      if (seg1.origin.isInterRead(seg2.origin)) (maxBetweenReadDistance, ReadPairIntraContig)
+      else                                      (maxWithinReadDistance, SplitReadIntraContig)
+    }
+
     val innerDistance = {
       if (seg1.range.start <= seg2.range.start) seg2.range.start - seg1.range.end
       else seg1.range.start - seg2.range.end
     }
-    if (innerDistance <= maxInnerDistance) None else {
-      val evidence = if (seg1.origin.isPairedWith(seg2.origin)) ReadPairIntraContig else SplitReadIntraContig
-      Some(BreakpointEvidence(from=seg1, into=seg2, evidence=evidence))
-    }
+
+    if (innerDistance <= maxDistance) None
+    else Some(BreakpointEvidence(from=seg1, into=seg2, evidence=evidence))
   }
 
   /** Determines if the primary mappings are from a read pair are evidence of an inversion or other re-arrangement from
