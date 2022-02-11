@@ -9,7 +9,7 @@ import com.fulcrumgenomics.sv.util.{AlignedSegment, SegmentOrigin, GenomicRange,
 class SvPileupTest extends UnitSpec {
   private def fromRangeOnly(refIndex: Int, start: Int, end: Int, origin: SegmentOrigin = ReadOne): AlignedSegment = AlignedSegment(
     origin=origin,
-    start=1, end=100, positiveStrand=true, cigar=Cigar("100M"),
+    readStart=1, readEnd=100, positiveStrand=true, cigar=Cigar("100M"),
     range=GenomicRange(refIndex=refIndex, start=start, end=end)
   )
 
