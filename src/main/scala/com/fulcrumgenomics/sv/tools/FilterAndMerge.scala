@@ -1,11 +1,11 @@
-package com.fulcrumgenomics.fgsv.tools
+package com.fulcrumgenomics.sv.tools
 
 import com.fulcrumgenomics.FgBioDef.{BetterBufferedIteratorScalaWrapper, FilePath, PathToSequenceDictionary}
 import com.fulcrumgenomics.commons.collection.BetterBufferedIterator
 import com.fulcrumgenomics.commons.util.{DelimitedDataParser, NumericCounter, Row, SimpleCounter}
 import com.fulcrumgenomics.fasta.SequenceDictionary
-import com.fulcrumgenomics.fgsv.cmdline.{ClpGroups, SVTool}
-import com.fulcrumgenomics.fgsv.util.EvidenceType
+import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
+import com.fulcrumgenomics.sv.util.EvidenceType
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.util.{Io, Metric}
 
@@ -18,13 +18,13 @@ import scala.collection.mutable
     |Filters and merges SVPileup output.
   """)
 class FilterAndMerge
-( @arg(flag='i', doc="The input pileup file from SVPileup") input: FilePath,
-  @arg(flag='o', doc="The output filtered and merged SVPileup file") output: FilePath,
+( @arg(flag='i', doc="The input pileup file from SvPileup") input: FilePath,
+  @arg(flag='o', doc="The output filtered and merged SvPileup file") output: FilePath,
   @arg(flag='d', doc="The path to the reference sequence dictionary.") dict: PathToSequenceDictionary,
   @arg(flag='m', doc="The minimum # of observations to examine an input site") minPre: Int = 1,
   @arg(flag='M', doc="The minimum # of observations to output a site") minPost: Int = 1,
   @arg(flag='s', doc="The maximum # bases between a breakend across adjacent sites") slop: Int = 0,
-) extends SVTool {
+) extends SvTool {
 
   Io.assertReadable(input)
   Io.assertCanWriteFile(output)

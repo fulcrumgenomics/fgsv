@@ -1,7 +1,7 @@
-package com.fulcrumgenomics.fgsv.util
+package com.fulcrumgenomics.sv.util
 
 import com.fulcrumgenomics.FgBioDef.forloop
-import com.fulcrumgenomics.fgsv.UnitSpec
+import com.fulcrumgenomics.sv.UnitSpec
 
 class GenomicRangeTest extends UnitSpec {
   private val r1 = GenomicRange(refIndex=1, start=1, end=10)

@@ -61,7 +61,7 @@ trait ReleaseModule extends JavaModule {
 object tools extends CommonModule with PublishModule with ReleaseModule {
   def scalaVersion = "2.13.3"
   def millSourcePath = super.millSourcePath / ammonite.ops.up
-  def mainClass = Some("com.fulcrumgenomics.fgsv.cmdline.SVMain")
+  def mainClass = Some("com.fulcrumgenomics.sv.cmdline.SVMain")
   def artifactName = "fgsv"
   def gitHash = Process("git rev-parse --short HEAD").lineStream.head
   def publishVersion = s"0.0.1-${gitHash}-SNAPSHOT"
@@ -99,7 +99,7 @@ object tools extends CommonModule with PublishModule with ReleaseModule {
     def ivyDeps = Agg(ivy"org.scalatest::scalatest:3.1.0")
     def testFrameworks = Seq("org.scalatest.tools.Framework")
 
-    // run mill tools.test.singleTest com.fulcrumgenomics.fgsv.x.y.x.TestClassName
+    // run mill tools.test.singleTest com.fulcrumgenomics.sv.x.y.x.TestClassName
     def singleTest(args: String*) = T.command {
       super.runMain("org.scalatest.run", args: _*)
     }

@@ -1,4 +1,4 @@
-package com.fulcrumgenomics.fgsv
+package com.fulcrumgenomics.sv
 
 import org.scalatest.{FlatSpec, Matchers, OptionValues}
 

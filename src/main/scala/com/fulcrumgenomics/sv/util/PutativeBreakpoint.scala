@@ -1,4 +1,4 @@
-package com.fulcrumgenomics.fgsv.util
+package com.fulcrumgenomics.sv.util
 
 /** Stores the genomic break ends of a putative breakpoint
  *
@@ -41,7 +41,7 @@ case class PutativeBreakpoint
 }
 
 object PutativeBreakpoint {
-  /** Builds a breakpoint from two alignment blocks, with the left-side having the lower genomic coordinate. */
+  /** Builds a breakpoint from two alignment segments, with the left-side having the lower genomic coordinate. */
   def apply(b1: AlignmentBlock, b2: AlignmentBlock, evidence: EvidenceType): PutativeBreakpoint = {
     val (first, second) = if (b1.range <= b2.range) (b1, b2) else (b2, b1)
     PutativeBreakpoint(

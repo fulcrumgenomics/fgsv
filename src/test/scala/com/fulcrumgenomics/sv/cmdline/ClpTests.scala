@@ -1,14 +1,14 @@
-package com.fulcrumgenomics.fgsv.cmdline
+package com.fulcrumgenomics.sv.cmdline
 
 import com.fulcrumgenomics.commons.util.CaptureSystemStreams
-import com.fulcrumgenomics.fgsv.UnitSpec
+import com.fulcrumgenomics.sv.UnitSpec
 
 /** Some basic test for the CLP classes. */
 class ClpTests extends UnitSpec with CaptureSystemStreams {
 
-  "SVTool" should "should print hello world" in {
+  "SvTool" should "should print hello world" in {
     val (output, _, _) = captureItAll { () =>
-      new SVMain().makeItSo("ExampleTool".split(' ')) shouldBe 0
+      new SvMain().makeItSo("ExampleTool".split(' ')) shouldBe 0
     }
     output shouldBe "Hello World!\n"
   }

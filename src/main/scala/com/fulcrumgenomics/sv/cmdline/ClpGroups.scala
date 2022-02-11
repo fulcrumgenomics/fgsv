@@ -1,4 +1,4 @@
-package com.fulcrumgenomics.fgsv.cmdline
+package com.fulcrumgenomics.sv.cmdline
 
 import com.fulcrumgenomics.sopt.cmdline.ClpGroup
 

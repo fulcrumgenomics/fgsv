@@ -1,4 +1,4 @@
-package com.fulcrumgenomics.fgsv.util
+package com.fulcrumgenomics.sv.util
 
 import com.fulcrumgenomics.FgBioDef.FgBioEnum
 import com.fulcrumgenomics.commons.util.StringUtil
@@ -17,11 +17,11 @@ object EvidenceType extends FgBioEnum[EvidenceType] {
   case object ReadPairReverseForward extends EvidenceType
   /** Evidence from a tandem read pair orientation. */
   case object ReadPairTandem extends EvidenceType
-  /** Evidence from a split read mapping where adjacent blocks map to different contigs. */
+  /** Evidence from a split read mapping where adjacent segments map to different contigs. */
   case object SplitReadInterContig extends EvidenceType
-  /** Evidence from a split read mapping where adjacent blocks map to the same contig, but too far apart. */
+  /** Evidence from a split read mapping where adjacent segments map to the same contig, but too far apart. */
   case object SplitReadIntraContig extends EvidenceType
-  /** Evidence from a split read mapping where adjacent blocks map to opposite genomic strands. */
+  /** Evidence from a split read mapping where adjacent segments map to opposite genomic strands. */
   case object SplitReadOppositeStrand extends EvidenceType
 
   override val values: immutable.IndexedSeq[EvidenceType] = findValues

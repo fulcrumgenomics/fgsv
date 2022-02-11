@@ -1,7 +1,7 @@
-package com.fulcrumgenomics.fgsv.cmdline
+package com.fulcrumgenomics.sv.cmdline
 
 import com.fulcrumgenomics.cmdline.FgBioTool
 import com.fulcrumgenomics.commons.util.LazyLogging
 
 /** All tools should extend this. */
-trait SVTool extends FgBioTool with LazyLogging
+trait SvTool extends FgBioTool with LazyLogging

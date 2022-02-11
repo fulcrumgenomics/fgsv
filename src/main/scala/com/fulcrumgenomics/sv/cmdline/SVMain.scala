@@ -1,4 +1,4 @@
-package com.fulcrumgenomics.fgsv.cmdline
+package com.fulcrumgenomics.sv.cmdline
 
 import com.fulcrumgenomics.bam.api.{SamSource, SamWriter}
 import com.fulcrumgenomics.cmdline.FgBioMain
@@ -7,12 +7,12 @@ import com.fulcrumgenomics.vcf.api.VcfWriter
 /**
   * Main program that loads everything up and runs the appropriate sub-command
   */
-object SVMain {
+object SvMain {
   /** The main method */
-  def main(args: Array[String]): Unit = new SVMain().makeItSoAndExit(args)
+  def main(args: Array[String]): Unit = new SvMain().makeItSoAndExit(args)
 }
 
-class SVMain extends FgBioMain {
+class SvMain extends FgBioMain {
 
   // HACK
   SamSource.DefaultUseAsyncIo = true
@@ -24,5 +24,5 @@ class SVMain extends FgBioMain {
 
   /** The packages we wish to include in our command line **/
   override protected def packageList: List[String] =
-    List[String]("com.fulcrumgenomics.fgsv")
+    List[String]("com.fulcrumgenomics.sv")
 }
