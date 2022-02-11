@@ -1,4 +1,4 @@
-package com.fulcrumgenomics.sv.util
+package com.fulcrumgenomics.sv
 
 import com.fulcrumgenomics.FgBioDef.FgBioEnum
 import com.fulcrumgenomics.commons.util.StringUtil

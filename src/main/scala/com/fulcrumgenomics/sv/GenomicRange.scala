@@ -1,4 +1,4 @@
-package com.fulcrumgenomics.sv.util
+package com.fulcrumgenomics.sv
 
 import htsjdk.samtools.util.CoordMath
 

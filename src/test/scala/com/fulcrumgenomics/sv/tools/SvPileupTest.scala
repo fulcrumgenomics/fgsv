@@ -1,10 +1,9 @@
 package com.fulcrumgenomics.sv.tools
 
 import com.fulcrumgenomics.alignment.Cigar
-import com.fulcrumgenomics.sv.UnitSpec
-import com.fulcrumgenomics.sv.util.SegmentOrigin.{Both, ReadOne, ReadTwo}
-import com.fulcrumgenomics.sv.util.EvidenceType._
-import com.fulcrumgenomics.sv.util.{AlignedSegment, SegmentOrigin, GenomicRange, PutativeBreakpoint}
+import com.fulcrumgenomics.sv.EvidenceType._
+import com.fulcrumgenomics.sv.SegmentOrigin.{Both, ReadOne, ReadTwo}
+import com.fulcrumgenomics.sv._
 
 class SvPileupTest extends UnitSpec {
   private def fromRangeOnly(refIndex: Int, start: Int, end: Int, origin: SegmentOrigin = ReadOne): AlignedSegment = AlignedSegment(
@@ -21,28 +20,28 @@ class SvPileupTest extends UnitSpec {
     SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr1).isEmpty shouldBe true
 
     // Different contig
-    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr2).value shouldBe PutativeBreakpoint(
+    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr2).value shouldBe BreakpointEvidence(
       chr1, chr2, SplitReadInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr2, seg2=chr1).value shouldBe PutativeBreakpoint(
+    SvPileup.determineInterContigBreakpiont(seg1=chr2, seg2=chr1).value shouldBe BreakpointEvidence(
       chr2, chr1, SplitReadInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr2.copy(origin=ReadTwo)).value shouldBe PutativeBreakpoint(
+    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr2.copy(origin=ReadTwo)).value shouldBe BreakpointEvidence(
       chr1, chr2.copy(origin=ReadTwo), ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr2.copy(origin=ReadTwo), seg2=chr1).value shouldBe PutativeBreakpoint(
+    SvPileup.determineInterContigBreakpiont(seg1=chr2.copy(origin=ReadTwo), seg2=chr1).value shouldBe BreakpointEvidence(
       chr2.copy(origin=ReadTwo), chr1, ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr2.copy(origin=Both)).value shouldBe PutativeBreakpoint(
+    SvPileup.determineInterContigBreakpiont(seg1=chr1, seg2=chr2.copy(origin=Both)).value shouldBe BreakpointEvidence(
       chr1, chr2.copy(origin=Both), ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr2.copy(origin=Both), seg2=chr1).value shouldBe PutativeBreakpoint(
+    SvPileup.determineInterContigBreakpiont(seg1=chr2.copy(origin=Both), seg2=chr1).value shouldBe BreakpointEvidence(
       chr2.copy(origin=Both), chr1, ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr1.copy(origin=Both), seg2=chr2.copy(origin=Both)).value shouldBe PutativeBreakpoint(
+    SvPileup.determineInterContigBreakpiont(seg1=chr1.copy(origin=Both), seg2=chr2.copy(origin=Both)).value shouldBe BreakpointEvidence(
       chr1.copy(origin=Both), chr2.copy(origin=Both), ReadPairInterContig
     )
-    SvPileup.determineInterContigBreakpiont(seg1=chr2.copy(origin=Both), seg2=chr1.copy(origin=Both)).value shouldBe PutativeBreakpoint(
+    SvPileup.determineInterContigBreakpiont(seg1=chr2.copy(origin=Both), seg2=chr1.copy(origin=Both)).value shouldBe BreakpointEvidence(
       chr2.copy(origin=Both), chr1.copy(origin=Both), ReadPairInterContig
     )
   }
@@ -59,19 +58,19 @@ class SvPileupTest extends UnitSpec {
     SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=overlap, maxInnerDistance=0).isEmpty shouldBe true
 
     // non-overlapping segments
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later, maxInnerDistance=49).value shouldBe PutativeBreakpoint(
+    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later, maxInnerDistance=49).value shouldBe BreakpointEvidence(
       earlier, later, SplitReadIntraContig
     )
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxInnerDistance=49).value shouldBe PutativeBreakpoint(
+    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxInnerDistance=49).value shouldBe BreakpointEvidence(
       earlier, later.copy(origin=ReadTwo), ReadPairIntraContig
     )
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later.copy(origin=Both), maxInnerDistance=49).value shouldBe PutativeBreakpoint(
+    SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later.copy(origin=Both), maxInnerDistance=49).value shouldBe BreakpointEvidence(
       earlier, later.copy(origin=Both), ReadPairIntraContig
     )
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier.copy(origin=Both), seg2=later, maxInnerDistance=49).value shouldBe PutativeBreakpoint(
+    SvPileup.determineIntraContigBreakpiont(seg1=earlier.copy(origin=Both), seg2=later, maxInnerDistance=49).value shouldBe BreakpointEvidence(
       earlier.copy(origin=Both), later, ReadPairIntraContig
     )
-    SvPileup.determineIntraContigBreakpiont(seg1=earlier.copy(origin=Both), seg2=later.copy(origin=Both), maxInnerDistance=49).value shouldBe PutativeBreakpoint(
+    SvPileup.determineIntraContigBreakpiont(seg1=earlier.copy(origin=Both), seg2=later.copy(origin=Both), maxInnerDistance=49).value shouldBe BreakpointEvidence(
       earlier.copy(origin=Both), later.copy(origin=Both), ReadPairIntraContig
     )
     SvPileup.determineIntraContigBreakpiont(seg1=earlier, seg2=later, maxInnerDistance=50).isEmpty shouldBe true
@@ -97,26 +96,26 @@ class SvPileupTest extends UnitSpec {
     SvPileup.determineOddPairOrientation(seg1=r1Reverse, seg2=r1Reverse).isEmpty shouldBe true
 
     // read pairs should be odd if RF or tandem
-    SvPileup.determineOddPairOrientation(seg1=r1Forward, seg2=r2Forward).value shouldBe PutativeBreakpoint(
+    SvPileup.determineOddPairOrientation(seg1=r1Forward, seg2=r2Forward).value shouldBe BreakpointEvidence(
       r1Forward, r2Forward, ReadPairTandem
     )
-    SvPileup.determineOddPairOrientation(seg1=r1Reverse, seg2=r2Reverse).value shouldBe PutativeBreakpoint(
+    SvPileup.determineOddPairOrientation(seg1=r1Reverse, seg2=r2Reverse).value shouldBe BreakpointEvidence(
       r1Reverse, r2Reverse, ReadPairTandem
     )
     // NB: bothForward can be treated as r2Forward, so tandem
-    SvPileup.determineOddPairOrientation(seg1=r1Forward, seg2=bothForward).value shouldBe PutativeBreakpoint(
+    SvPileup.determineOddPairOrientation(seg1=r1Forward, seg2=bothForward).value shouldBe BreakpointEvidence(
       r1Forward, bothForward, ReadPairTandem
     )
     // NB: bothReverse can be treated as r2Reverse, so tandem
-    SvPileup.determineOddPairOrientation(seg1=r1Reverse, seg2=bothReverse).value shouldBe PutativeBreakpoint(
+    SvPileup.determineOddPairOrientation(seg1=r1Reverse, seg2=bothReverse).value shouldBe BreakpointEvidence(
       r1Reverse, bothReverse, ReadPairTandem
     )
     // NB: both* can be treated as R1/R2, so tandem
-    SvPileup.determineOddPairOrientation(seg1=bothForward, seg2=bothForward).value shouldBe PutativeBreakpoint(
+    SvPileup.determineOddPairOrientation(seg1=bothForward, seg2=bothForward).value shouldBe BreakpointEvidence(
       bothForward, bothForward, ReadPairTandem
     )
     // NB: both* can be treated as R1/R2, so tandem
-    SvPileup.determineOddPairOrientation(seg1=bothReverse, seg2=bothReverse).value shouldBe PutativeBreakpoint(
+    SvPileup.determineOddPairOrientation(seg1=bothReverse, seg2=bothReverse).value shouldBe BreakpointEvidence(
       bothReverse, bothReverse, ReadPairTandem
     )
 
@@ -127,7 +126,7 @@ class SvPileupTest extends UnitSpec {
       (r2Forward, r2Reverse),
       (r2Reverse, r2Forward),
     ).foreach { case (seg1, seg2) =>
-      SvPileup.determineOddPairOrientation(seg1=seg1, seg2=seg2).value shouldBe PutativeBreakpoint(
+      SvPileup.determineOddPairOrientation(seg1=seg1, seg2=seg2).value shouldBe BreakpointEvidence(
         seg1, seg2, SplitReadOppositeStrand
       )
     }

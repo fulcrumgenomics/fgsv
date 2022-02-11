@@ -1,15 +1,15 @@
 package com.fulcrumgenomics.sv.tools
 
-import com.fulcrumgenomics.FgBioDef.{BetterBufferedIteratorScalaWrapper, FilePath, PathPrefix, PathToBam, SafelyClosable}
+import com.fulcrumgenomics.FgBioDef.{PathPrefix, PathToBam, SafelyClosable, yieldAndThen}
 import com.fulcrumgenomics.bam.api.{SamRecord, SamSource, SamWriter}
 import com.fulcrumgenomics.bam.{Bams, Template}
 import com.fulcrumgenomics.commons.io.PathUtil
-import com.fulcrumgenomics.commons.util.{LazyLogging, SimpleCounter}
+import com.fulcrumgenomics.commons.util.LazyLogging
 import com.fulcrumgenomics.fasta.SequenceDictionary
-import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
-import com.fulcrumgenomics.sv.util.EvidenceType._
-import com.fulcrumgenomics.sv.util.{AlignedSegment, EvidenceType, PutativeBreakpoint}
 import com.fulcrumgenomics.sopt.{arg, clp}
+import com.fulcrumgenomics.sv.EvidenceType._
+import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
+import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, EvidenceType}
 import com.fulcrumgenomics.util.{Io, ProgressLogger}
 
 import scala.collection.immutable.IndexedSeq
@@ -43,89 +43,79 @@ class SvPileup
   Io.assertCanWriteFile(output)
 
   override def execute(): Unit = {
-    val source         = SamSource(PathUtil.pathTo(output + ".bam"))
-    val writer         = SamWriter(PathUtil.pathTo(output + ".txt"), header=source.header)
-    val progress       = new ProgressLogger(logger, noun="templates")
-    val breakpoints    = new SimpleCounter[PutativeBreakpoint]()
-    val breakpointToId = new BreakpointToIdMap()
+    val source     = SamSource(PathUtil.pathTo(output + ".bam"))
+    val writer     = SamWriter(PathUtil.pathTo(output + ".txt"), header=source.header)
+    val progress   = new ProgressLogger(logger, noun="templates")
+    val tracker    = new BreakpointTracker()
     Bams.templateIterator(source)
       .tapEach(t => progress.record(t.r1.getOrElse(t.r2.get)))
       .filter(template => template.primaryReads.forall(primaryOk))
       .foreach { template =>
         // Find the breakpoints
-        val templateBreakpoints = findBreakpoints(
+        val evidences = findBreakpoints(
           template                       = template,
           maxReadPairInnerDistance       = maxReadPairInnerDistance,
           maxAlignedSegmentInnerDistance = maxAlignedSegmentInnerDistance,
           minSupplementaryMappingQuality = minSupplementaryMappingQuality,
           minUniqueBasesToAdd            = minUniqueBasesToAdd,
-          breakpointToId                 = breakpointToId
         )
+
+        // Update the tracker
+        evidences.foreach { ev => tracker.count(ev.breakpoint, ev.evidence) }
+
         // Optionally write the reads to a BAM
-        maybeWriteTemplate(
-          template       = template,
-          breakpoints    = templateBreakpoints,
-          writer         = writer
-        )
-        // Count the breakpoints
-        templateBreakpoints.foreach(breakpoints.count)
+        maybeWriteTemplate(template, evidences, tracker, writer)
       }
+
     progress.logLast()
     source.safelyClose()
     writer.close()
 
     // Write the results
-    writeBreakpoints(breakpoints=breakpoints, dict=source.dict)
+    writeBreakpoints(tracker=tracker, dict=source.dict)
   }
 
   /** Annotates the reads for the given template and writes them to the writer if provided.
    * */
   private def maybeWriteTemplate(template: Template,
-                                 breakpoints: IndexedSeq[PutativeBreakpoint],
+                                 evidences: IndexedSeq[BreakpointEvidence],
+                                 tracker: BreakpointTracker,
                                  writer: SamWriter): Unit = {
-    if (breakpoints.nonEmpty) {
-      val tagValue = breakpoints.map(_.id).toSet.toSeq.sorted.map(_.toString).mkString(",")
-      val evidences = breakpoints.map(_.evidence.snakeName).mkString(",")
+    if (evidences.nonEmpty) {
+      val bps = evidences.map(e => tracker.idOf(e.breakpoint)).toSet.toSeq.sorted.mkString(",")
+      val evs = evidences.map(_.evidence.snakeName).mkString(",")
       template.allReads.foreach { rec =>
-        rec(SamBreakpointTag) = tagValue
-        rec(SamEvidenceTag)   = evidences
+        rec(SamBreakpointTag) = bps
+        rec(SamEvidenceTag)   = evs
         writer += rec
       }
     }
   }
 
   /** Coalesce the breakpoint counts and write them. */
-  private def writeBreakpoints(breakpoints: SimpleCounter[PutativeBreakpoint], dict: SequenceDictionary): Unit = {
+  private def writeBreakpoints(tracker: BreakpointTracker, dict: SequenceDictionary): Unit = {
     val writer = Io.toWriter(output)
     val fields = Seq("id", "left_contig", "left_pos", "left_strand", "right_contig", "right_pos", "right_strand", "total") ++
       EvidenceType.values.map(_.snakeName)
     writer.write(fields.mkString("", "\t", "\n"))
 
-    val breakpointsIter = breakpoints.toIndexedSeq
-      .sortBy { case (b, _) => (b.leftRefIndex, b.rightRefIndex, b.leftPos, b.rightPos, b.leftPositive, b.rightPositive)}
-      .iterator
-      .bufferBetter
+    val breakpoints = tracker.breakpoints
+      .toIndexedSeq
+      .sortWith(Breakpoint.PairedOrdering.lt)
 
-    while (breakpointsIter.hasNext) {
-      val first: PutativeBreakpoint = breakpointsIter.head._1
-      val coalesced = breakpointsIter.takeWhile(_._1.sameBreakEnds(first)).toIndexedSeq
-      val countsMap: Map[EvidenceType, Long] = coalesced
-        .groupBy(_._1.evidence)
-        .map { case (svType: EvidenceType, data: Seq[(PutativeBreakpoint, Long)]) => (svType, data.map(_._2).sum) }
-      val leftRefName  = dict(first.leftRefIndex).name
-      val rightRefName = dict(first.rightRefIndex).name
-      val counts       = EvidenceType.values.map(svType => countsMap.getOrElse(svType, 0L))
+    breakpoints.foreach { bp =>
+      val id           = tracker.idOf(bp)
+      val counts       = tracker.countsFor(bp)
+      val leftRefName  = dict(bp.leftRefIndex).name
+      val rightRefName = dict(bp.rightRefIndex).name
       val total        = counts.sum
-      // FIXME: wouldn't it be nice if this wasn't a comma-delimited list?  That would take a bunch of work to use
-      // .sameBreakends and store evidence counts when initially gathering the breakpoints.  Defer to later.
-      val id = coalesced.iterator.map(_._1.id).toSet.toSeq.sorted.mkString(",")
 
       val values = Iterator(
-        id, leftRefName, first.leftPos, toStrand(first.leftPositive),
-        rightRefName, first.rightPos, toStrand(first.rightPositive), total
+        id, leftRefName, bp.leftPos, toStrand(bp.leftPositive), rightRefName, bp.rightPos, toStrand(bp.rightPositive), total
       ) ++ counts.iterator
       writer.write(values.mkString("", "\t", "\n"))
     }
+
     writer.close()
   }
 
@@ -139,26 +129,42 @@ class SvPileup
 }
 
 object SvPileup extends LazyLogging {
-
   val SamEvidenceTag: String = "ev"
   val SamBreakpointTag: String = "be"
 
-  /** A little class to map a breakpoint to id, ignoring the existing id of the breakpoint. */
-  private class BreakpointToIdMap {
-    private var _nextId: Long = 0L
-    private val breakpointToId = mutable.HashMap[PutativeBreakpoint, Long]()
+  /** Class that tracks IDs and counts for Breakpoints during discovery. */
+  private class BreakpointTracker {
+    type BreakpointId = Long
 
-    /** Returns the identifier of the breakpoint, if it exists, or the next identifier that should be used. */
-    def apply(breakpoint: PutativeBreakpoint): Long = {
-      // NB: use id=0 and evidence=any so we can find it in the map regardless of existing id and evidence type
-      this.breakpointToId.getOrElseUpdate(breakpoint.copy(id=0, evidence=EvidenceType.ReadPairTandem), {
-        val id = this._nextId
-        this._nextId += 1
-        id
-      })
+    private var _nextId: Long   = 0L
+    private val breakpointToId = mutable.HashMap[Breakpoint, BreakpointId]()
+    private val counts         = mutable.HashMap[Breakpoint, Array[Int]]()
+
+    private def nextId: BreakpointId = yieldAndThen(this._nextId) { this._nextId += 1 }
+
+    /** Adds a count of one to the evidence for the given breakpoint under the evidence type given.
+     * Returns the numerical ID of the breakpoint.
+     */
+    def count(bp: Breakpoint, ev: EvidenceType): BreakpointId = {
+      val id = this.breakpointToId.getOrElseUpdate(bp, nextId)
+      val ns = this.counts.getOrElseUpdate(bp, new Array[Int](EvidenceType.values.size))
+      ns(EvidenceType.indexOf(ev)) += 1
+      id
     }
 
-    def nextId: Long = this._nextId
+    /** Returns an iterator over the set of observed breakpoints, ordering is not predictable. */
+    def breakpoints: Iterator[Breakpoint] = breakpointToId.keysIterator
+
+    /** Gets the ID of a breakpoint that has previously been tracked. */
+    def idOf(bp: Breakpoint): BreakpointId = this.breakpointToId(bp)
+
+    /** Gets the evidence counts for a given breakpoint in the same order as EvidenceType.values. */
+    def countsFor(bp: Breakpoint): Array[Int] = this.counts(bp)
+
+    /** Gets the evidence counts for a given breakpoint zipped with the evidence types. */
+    def evidenceFor(bp: Breakpoint): IndexedSeq[(EvidenceType, Int)] = {
+      EvidenceType.values.zip(this.counts(bp))
+    }
   }
 
   /** Finds the breakpoints for the given template.
@@ -176,8 +182,7 @@ object SvPileup extends LazyLogging {
                       maxAlignedSegmentInnerDistance: Int,
                       minSupplementaryMappingQuality: Int,
                       minUniqueBasesToAdd: Int,
-                      breakpointToId: BreakpointToIdMap,
-                     ): IndexedSeq[PutativeBreakpoint] = {
+                     ): IndexedSeq[BreakpointEvidence] = {
     val segments = AlignedSegment.segmentsFrom(
       template                       = template,
       minSupplementaryMappingQuality = minSupplementaryMappingQuality,
@@ -186,15 +191,14 @@ object SvPileup extends LazyLogging {
 
     if (segments.length == 1) IndexedSeq.empty else {
       segments.iterator.sliding(2).flatMap { case Seq(seg1, seg2) =>
-        var result: Option[PutativeBreakpoint] = determineInterContigBreakpiont(seg1=seg1, seg2=seg2)
+        var result: Option[BreakpointEvidence] = determineInterContigBreakpoint(seg1=seg1, seg2=seg2)
         if (result.isEmpty) {
           val maxInnerDistance = if (seg1.origin != seg2.origin) maxAlignedSegmentInnerDistance else maxReadPairInnerDistance
-          result = determineIntraContigBreakpiont(seg1=seg1, seg2=seg2, maxInnerDistance=maxInnerDistance)
+          result = determineIntraContigBreakpoint(seg1=seg1, seg2=seg2, maxInnerDistance=maxInnerDistance)
         }
         if (result.isEmpty) result = determineOddPairOrientation(seg1=seg1, seg2=seg2)
         result
       }
-      .map { breakpoint => breakpoint.copy(id = breakpointToId(breakpoint)) } // update the id!
       .toIndexedSeq
     }
   }
@@ -204,13 +208,13 @@ object SvPileup extends LazyLogging {
    * @param seg1 the first alignment segment
    * @param seg2 the second alignment segment
    */
-  def determineInterContigBreakpiont(seg1: AlignedSegment, seg2: AlignedSegment): Option[PutativeBreakpoint] = {
+  def determineInterContigBreakpoint(seg1: AlignedSegment, seg2: AlignedSegment): Option[BreakpointEvidence] = {
     val r1 = seg1.range
     val r2 = seg2.range
     if (r1.refIndex == r2.refIndex) None
     else {
       val evidence = if (seg1.origin.isPairedWith(seg2.origin)) ReadPairInterContig else SplitReadInterContig
-      Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=evidence))
+      Some(BreakpointEvidence(from=seg1, into=seg2, evidence=evidence))
     }
   }
 
@@ -222,7 +226,7 @@ object SvPileup extends LazyLogging {
    * @param maxInnerDistance the maximum "inner distance" allowed between the two segments, otherwise return a putative
    *                         breakpoint
    */
-  def determineIntraContigBreakpiont(seg1: AlignedSegment, seg2: AlignedSegment, maxInnerDistance: Int): Option[PutativeBreakpoint] = {
+  def determineIntraContigBreakpoint(seg1: AlignedSegment, seg2: AlignedSegment, maxInnerDistance: Int): Option[BreakpointEvidence] = {
     require(seg1.range.refIndex == seg2.range.refIndex)
     val innerDistance = {
       if (seg1.range.start <= seg2.range.start) seg2.range.start - seg1.range.end
@@ -230,7 +234,7 @@ object SvPileup extends LazyLogging {
     }
     if (innerDistance <= maxInnerDistance) None else {
       val evidence = if (seg1.origin.isPairedWith(seg2.origin)) ReadPairIntraContig else SplitReadIntraContig
-      Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=evidence))
+      Some(BreakpointEvidence(from=seg1, into=seg2, evidence=evidence))
     }
   }
 
@@ -241,23 +245,23 @@ object SvPileup extends LazyLogging {
    * @param seg1 the first alignment segment
    * @param seg2 the second alignment segment
    */
-  def determineOddPairOrientation(seg1: AlignedSegment, seg2: AlignedSegment): Option[PutativeBreakpoint] = {
+  def determineOddPairOrientation(seg1: AlignedSegment, seg2: AlignedSegment): Option[BreakpointEvidence] = {
     require(seg1.range.refIndex == seg2.range.refIndex)
 
     if (seg1.origin.isPairedWith(seg2.origin)) { // Treat as R1->R2 or R2->R1
-      if (seg1.positiveStrand == seg2.positiveStrand) Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=ReadPairTandem))
+      if (seg1.positiveStrand == seg2.positiveStrand) Some(BreakpointEvidence(from=seg1, into=seg2, evidence=ReadPairTandem))
       else {
         // Follows the implementation in htsjdk.samtool.SamPairUtil.getPairOrientation
         val (positiveStrandFivePrime, negativeStrandFivePrime) = {
           if (seg1.positiveStrand) (seg1.range.start, seg2.range.end) else (seg2.range.start, seg1.range.end)
         }
         if (positiveStrandFivePrime < negativeStrandFivePrime) None // FR is ok
-        else Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=ReadPairReverseForward)) // RF
+        else Some(BreakpointEvidence(from=seg1, into=seg2, evidence=ReadPairReverseForward)) // RF
       }
     }
     else {
       if (seg1.positiveStrand == seg2.positiveStrand) None
-      else Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=SplitReadOppositeStrand))
+      else Some(BreakpointEvidence(from=seg1, into=seg2, evidence=SplitReadOppositeStrand))
     }
   }
 }
