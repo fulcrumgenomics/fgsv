@@ -42,8 +42,8 @@ case class PutativeBreakpoint
 
 object PutativeBreakpoint {
   /** Builds a breakpoint from two alignment segments, with the left-side having the lower genomic coordinate. */
-  def apply(b1: AlignmentBlock, b2: AlignmentBlock, evidence: EvidenceType): PutativeBreakpoint = {
-    val (first, second) = if (b1.range <= b2.range) (b1, b2) else (b2, b1)
+  def apply(seg1: AlignedSegment, seg2: AlignedSegment, evidence: EvidenceType): PutativeBreakpoint = {
+    val (first, second) = if (seg1.range <= seg2.range) (seg1, seg2) else (seg2, seg1)
     PutativeBreakpoint(
       leftRefIndex  = first.range.refIndex,
       leftPos       = first.range.end,

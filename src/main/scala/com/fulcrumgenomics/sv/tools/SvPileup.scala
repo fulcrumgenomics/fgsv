@@ -99,7 +99,7 @@ class SvPileup
     val writer = Io.toWriter(output)
     val fields = Seq("id", "left_contig", "left_pos", "right_contig", "right_pos", "same_strand", "total") ++
       EvidenceType.values.map(_.snakeName)
-    writer.write(fields.mkString("", "\t", "\n")
+    writer.write(fields.mkString("", "\t", "\n"))
     writer.write('\n')
     val breakpointsIter = breakpoints.toIndexedSeq
       .sortBy { case (b, _) => (b.leftRefIndex, b.rightRefIndex, b.leftPos, b.rightPos, b.sameStrand)}
