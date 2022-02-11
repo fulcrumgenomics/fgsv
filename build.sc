@@ -89,10 +89,7 @@ object tools extends CommonModule with PublishModule with ReleaseModule {
 
   def ivyDeps = Agg(
     ivy"org.scala-lang:scala-compiler:${scalaVersion()}",
-    ivy"mysql:mysql-connector-java:5.1.24",
-    ivy"com.fulcrumgenomics:commons_2.13:1.1.0",
-    ivy"com.fulcrumgenomics:sopt_2.13:1.1.0",
-    ivy"com.fulcrumgenomics:fgbio_2.13:1.4.0-61dde53-SNAPSHOT".excludeOrg(orgsToExclude:_*),
+    ivy"com.fulcrumgenomics:fgbio_2.13:1.5.0".excludeOrg(orgsToExclude:_*),
     )
 
   object test extends Tests {
