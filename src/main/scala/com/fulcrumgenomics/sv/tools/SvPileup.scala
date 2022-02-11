@@ -49,7 +49,7 @@ class SvPileup
     val breakpoints    = new SimpleCounter[PutativeBreakpoint]()
     val breakpointToId = new BreakpointToIdMap()
     Bams.templateIterator(source)
-      .map(t => {progress.record(t.r1.getOrElse(t.r2.get)); t})
+      .tapEach(t => progress.record(t.r1.getOrElse(t.r2.get)))
       .filter(template => template.primaryReads.forall(primaryOk))
       .foreach { template =>
         // Find the breakpoints
@@ -97,13 +97,15 @@ class SvPileup
   /** Coalesce the breakpoint counts and write them. */
   private def writeBreakpoints(breakpoints: SimpleCounter[PutativeBreakpoint], dict: SequenceDictionary): Unit = {
     val writer = Io.toWriter(output)
-    val fields = Seq("id", "left_contig", "left_pos", "right_contig", "right_pos", "same_strand", "total") ++
+    val fields = Seq("id", "left_contig", "left_pos", "left_strand", "right_contig", "right_pos", "right_strand", "total") ++
       EvidenceType.values.map(_.snakeName)
     writer.write(fields.mkString("", "\t", "\n"))
-    writer.write('\n')
+
     val breakpointsIter = breakpoints.toIndexedSeq
-      .sortBy { case (b, _) => (b.leftRefIndex, b.rightRefIndex, b.leftPos, b.rightPos, b.sameStrand)}
-      .iterator.bufferBetter
+      .sortBy { case (b, _) => (b.leftRefIndex, b.rightRefIndex, b.leftPos, b.rightPos, b.leftPositive, b.rightPositive)}
+      .iterator
+      .bufferBetter
+
     while (breakpointsIter.hasNext) {
       val first: PutativeBreakpoint = breakpointsIter.head._1
       val coalesced = breakpointsIter.takeWhile(_._1.sameBreakEnds(first)).toIndexedSeq
@@ -117,12 +119,18 @@ class SvPileup
       // FIXME: wouldn't it be nice if this wasn't a comma-delimited list?  That would take a bunch of work to use
       // .sameBreakends and store evidence counts when initially gathering the breakpoints.  Defer to later.
       val id = coalesced.iterator.map(_._1.id).toSet.toSeq.sorted.mkString(",")
-      writer.write(f"$id\t$leftRefName\t${first.leftPos}\t$rightRefName\t${first.rightPos}\t${first.sameStrand}\t$total")
-      counts.foreach(count => writer.write(f"\t$count"))
-      writer.write('\n')
+
+      val values = Iterator(
+        id, leftRefName, first.leftPos, toStrand(first.leftPositive),
+        rightRefName, first.rightPos, toStrand(first.rightPositive), total
+      ) ++ counts.iterator
+      writer.write(values.mkString("", "\t", "\n"))
     }
     writer.close()
   }
+
+  /** Converts the boolean strand info to +/-. */
+  private def toStrand(positive: Boolean): String = if (positive) "+" else "-"
 
   /** Returns true if the primary alignment is mapped and has sufficient mapping quality */
   private def primaryOk(primary: SamRecord): Boolean = {
