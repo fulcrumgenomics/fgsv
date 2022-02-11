@@ -1,6 +1,6 @@
 package com.fulcrumgenomics.sv
 
-import com.fulcrumgenomics.FgBioDef.FgBioEnum
+import com.fulcrumgenomics.FgBioDef.{FgBioEnum, SumBy}
 import com.fulcrumgenomics.alignment.Cigar
 import com.fulcrumgenomics.bam.Template
 import com.fulcrumgenomics.bam.api.SamRecord
@@ -63,21 +63,18 @@ object AlignedSegment extends LazyLogging {
     require(rec.mapped)
     val range = GenomicRange(refIndex = rec.refIndex, start = rec.start, end = rec.end)
     val cigar = rec.cigar
-    val leadingClipping = cigar.iterator
-      .takeWhile(_.operator.isClipping) // take leading clipping
-      .map(_.length).sum
+
+    val leadingClipping  = cigar.iterator.takeWhile(_.operator.isClipping).sumBy(_.length)
+    val trailingClipping = cigar.reverseIterator.takeWhile(_.operator.isClipping).sumBy(_.length)
     val middle = cigar.iterator
       .dropWhile(_.operator.isClipping) // skip leading clipping
       .takeWhile(!_.operator.isClipping) // take until we hit any clipping at the end
       .filter(_.operator.consumesReadBases()) // only operators that consume read bases
       .map(_.length).sum
-    val trailingClipping = cigar.iterator
-      .dropWhile(_.operator.isClipping) // skip leading clipping
-      .dropWhile(!_.operator.isClipping) // skip until we hit any clipping at the end
-      .map(_.length).sum
+
     val (start, end) = {
-      if (rec.positiveStrand) (leadingClipping + 1, leadingClipping + middle)
-      else (trailingClipping + 1, trailingClipping + middle)
+      if (rec.positiveStrand) (leadingClipping + 1,  leadingClipping + middle)
+      else                    (trailingClipping + 1, trailingClipping + middle)
     }
 
     AlignedSegment(origin = SegmentOrigin(rec), readStart = start, readEnd = end, positiveStrand = rec.positiveStrand, cigar = rec.cigar, range = range)
