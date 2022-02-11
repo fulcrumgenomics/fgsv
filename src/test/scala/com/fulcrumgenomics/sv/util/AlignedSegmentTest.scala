@@ -22,53 +22,53 @@ class AlignedSegmentTest extends UnitSpec {
     // All bases mapped
     AlignedSegment(readEnd(start=1, cigar="100M")) shouldBe AlignedSegment(
       origin=ReadOne,
-      start=1, end=100, positiveStrand=true, cigar=Cigar("100M"),
+      readStart=1, readEnd=100, positiveStrand=true, cigar=Cigar("100M"),
       range=GenomicRange(refIndex=0, start=1, end=100)
     )
     AlignedSegment(readEnd(start=1, cigar="100M", firstOfPair=false)) shouldBe AlignedSegment(
       origin=ReadTwo,
-      start=1, end=100, positiveStrand=true, cigar=Cigar("100M"),
+      readStart=1, readEnd=100, positiveStrand=true, cigar=Cigar("100M"),
       range=GenomicRange(refIndex=0, start=1, end=100),
     )
     AlignedSegment(readEnd(start=1, cigar="100M", strand=SamBuilder.Minus)) shouldBe AlignedSegment(
       origin=ReadOne,
-      start=1, end=100, positiveStrand=false, cigar=Cigar("100M"),
+      readStart=1, readEnd=100, positiveStrand=false, cigar=Cigar("100M"),
       range=GenomicRange(refIndex=0, start=1, end=100)
     )
 
     // Leading soft-clipping
     AlignedSegment(readEnd(start=11, cigar="10S90M")) shouldBe AlignedSegment(
       origin=ReadOne,
-      start=11, end=100, positiveStrand=true, cigar=Cigar("10S90M"),
+      readStart=11, readEnd=100, positiveStrand=true, cigar=Cigar("10S90M"),
       range=GenomicRange(refIndex=0, start=11, end=100)
     )
     AlignedSegment(readEnd(start=11, cigar="10S90M", strand=SamBuilder.Minus)) shouldBe AlignedSegment(
       origin=ReadOne,
-      start=1, end=90, positiveStrand=false, cigar=Cigar("10S90M"),
+      readStart=1, readEnd=90, positiveStrand=false, cigar=Cigar("10S90M"),
       range=GenomicRange(refIndex=0, start=11, end=100)
     )
 
     // trailing soft-clipping
     AlignedSegment(readEnd(start=1, cigar="90M10S")) shouldBe AlignedSegment(
       origin=ReadOne,
-      start=1, end=90, positiveStrand=true, cigar=Cigar("90M10S"),
+      readStart=1, readEnd=90, positiveStrand=true, cigar=Cigar("90M10S"),
       range=GenomicRange(refIndex=0, start=1, end=90)
     )
     AlignedSegment(readEnd(start=1, cigar="90M10S", strand=SamBuilder.Minus)) shouldBe AlignedSegment(
       origin=ReadOne,
-      start=11, end=100, positiveStrand=false, cigar=Cigar("90M10S"),
+      readStart=11, readEnd=100, positiveStrand=false, cigar=Cigar("90M10S"),
       range=GenomicRange(refIndex=0, start=1, end=90)
     )
 
     // lots of clipping
     AlignedSegment(readEnd(start=10, cigar="1H4S90M6S2H")) shouldBe AlignedSegment(
       origin=ReadOne,
-      start=6, end=95, positiveStrand=true, cigar=Cigar("1H4S90M6S2H"),
+      readStart=6, readEnd=95, positiveStrand=true, cigar=Cigar("1H4S90M6S2H"),
       range=GenomicRange(refIndex=0, start=10, end=99)
     )
     AlignedSegment(readEnd(start=10, cigar="1H4S90M6S2H", strand=SamBuilder.Minus)) shouldBe AlignedSegment(
       origin=ReadOne,
-      start=9, end=98, positiveStrand=false, cigar=Cigar("1H4S90M6S2H"),
+      readStart=9, readEnd=98, positiveStrand=false, cigar=Cigar("1H4S90M6S2H"),
       range=GenomicRange(refIndex=0, start=10, end=99)
     )
   }
@@ -77,10 +77,10 @@ class AlignedSegmentTest extends UnitSpec {
     val dummyRange = GenomicRange(refIndex=0, start=1, end=100)
 
     val primary = AlignedSegment(
-      origin=ReadOne, start=1, end=50, positiveStrand=true, cigar=Cigar.empty, range=dummyRange
+      origin=ReadOne, readStart=1, readEnd=50, positiveStrand=true, cigar=Cigar.empty, range=dummyRange
     )
     val supplemental = AlignedSegment(
-      origin=ReadOne, start=51, end=100, positiveStrand=true, cigar=Cigar.empty, range=dummyRange
+      origin=ReadOne, readStart=51, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=dummyRange
     )
 
     // Keep both
@@ -100,17 +100,17 @@ class AlignedSegmentTest extends UnitSpec {
 
     // A more complicated test case
     // Will be added, as we have 10 new bases
-    val s1 = AlignedSegment(origin=ReadOne, start=40, end=60, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
+    val s1 = AlignedSegment(origin=ReadOne, readStart=40, readEnd=60, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
     // Wont not be added, as we have only 9 new bases
-    val s2 = AlignedSegment(origin=ReadOne, start=50, end=69, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
+    val s2 = AlignedSegment(origin=ReadOne, readStart=50, readEnd=69, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
     // Will be added, as we have 10 new bases
-    val s3 = AlignedSegment(origin=ReadOne, start=50, end=70, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
+    val s3 = AlignedSegment(origin=ReadOne, readStart=50, readEnd=70, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
     // Wont not be added, as we have only 9 new bases
-    val s4 = AlignedSegment(origin=ReadOne, start=92, end=100, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
+    val s4 = AlignedSegment(origin=ReadOne, readStart=92, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
     // Will be added, as we have 10 new bases
-    val s5 = AlignedSegment(origin=ReadOne, start=91, end=100, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
+    val s5 = AlignedSegment(origin=ReadOne, readStart=91, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
     // Will not be added, as we have zero new bases
-    val s6 = AlignedSegment(origin=ReadOne, start=91, end=100, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
+    val s6 = AlignedSegment(origin=ReadOne, readStart=91, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
     AlignedSegment.segmentsFrom(
       primary=primary, supplementals=Iterator(s1, s2, s3, s4, s5, s6), readLength=100, minUniqueBasesToAdd=10
     ) should contain theSameElementsInOrderAs IndexedSeq(primary, s1, s3, s5)
@@ -124,9 +124,9 @@ class AlignedSegmentTest extends UnitSpec {
 
     // No overlaps with one segment on R1 and two on R2
     {
-      val b1 = AlignedSegment(origin=ReadOne, start=1, end=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
-      val b2 = AlignedSegment(origin=ReadTwo, start=51, end=100, positiveStrand=true, cigar=Cigar.empty, range=r3)
-      val b3 = AlignedSegment(origin=ReadTwo, start=1, end=50, positiveStrand=true, cigar=Cigar.empty, range=r4)
+      val b1 = AlignedSegment(origin=ReadOne, readStart=1, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
+      val b2 = AlignedSegment(origin=ReadTwo, readStart=51, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r3)
+      val b3 = AlignedSegment(origin=ReadTwo, readStart=1, readEnd=50, positiveStrand=true, cigar=Cigar.empty, range=r4)
       AlignedSegment.mergeAlignedSegments(
         r1Segments=IndexedSeq(b1), r2Segments=IndexedSeq(b2, b3), numOverlappingSegments=1
       ) should contain theSameElementsInOrderAs IndexedSeq(b1, b2, b3)
@@ -134,9 +134,9 @@ class AlignedSegmentTest extends UnitSpec {
 
     // No overlaps with one segment on R1 and two on R2 due to strand
     {
-      val b1 = AlignedSegment(origin=ReadOne, start=1, end=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
-      val b2 = AlignedSegment(origin=ReadTwo, start=51, end=100, positiveStrand=false, cigar=Cigar.empty, range=r1)
-      val b3 = AlignedSegment(origin=ReadTwo, start=1, end=50, positiveStrand=false, cigar=Cigar.empty, range=r1)
+      val b1 = AlignedSegment(origin=ReadOne, readStart=1, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
+      val b2 = AlignedSegment(origin=ReadTwo, readStart=51, readEnd=100, positiveStrand=false, cigar=Cigar.empty, range=r1)
+      val b3 = AlignedSegment(origin=ReadTwo, readStart=1, readEnd=50, positiveStrand=false, cigar=Cigar.empty, range=r1)
       AlignedSegment.mergeAlignedSegments(
         r1Segments=IndexedSeq(b1), r2Segments=IndexedSeq(b2, b3), numOverlappingSegments=1
       ) should contain theSameElementsInOrderAs IndexedSeq(b1, b2, b3)
@@ -144,9 +144,9 @@ class AlignedSegmentTest extends UnitSpec {
 
     // No overlaps with two segments on R1 and one on R2
     {
-      val b1 = AlignedSegment(origin=ReadOne, start=1, end=50, positiveStrand=true, cigar=Cigar.empty, range=r3)
-      val b2 = AlignedSegment(origin=ReadOne, start=51, end=100, positiveStrand=true, cigar=Cigar.empty, range=r4)
-      val b3 = AlignedSegment(origin=ReadTwo, start=1, end=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
+      val b1 = AlignedSegment(origin=ReadOne, readStart=1, readEnd=50, positiveStrand=true, cigar=Cigar.empty, range=r3)
+      val b2 = AlignedSegment(origin=ReadOne, readStart=51, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r4)
+      val b3 = AlignedSegment(origin=ReadTwo, readStart=1, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
       AlignedSegment.mergeAlignedSegments(
         r1Segments=IndexedSeq(b1), r2Segments=IndexedSeq(b2, b3), numOverlappingSegments=1
       ) should contain theSameElementsInOrderAs IndexedSeq(b1, b2, b3)
@@ -154,10 +154,10 @@ class AlignedSegmentTest extends UnitSpec {
 
     // No overlaps with two segments on R1 and two segments on R2
     {
-      val b1 = AlignedSegment(origin=ReadOne, start=1, end=51, positiveStrand=true, cigar=Cigar.empty, range=r1)
-      val b2 = AlignedSegment(origin=ReadOne, start=51, end=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
-      val b3 = AlignedSegment(origin=ReadTwo, start=51, end=100, positiveStrand=true, cigar=Cigar.empty, range=r4)
-      val b4 = AlignedSegment(origin=ReadTwo, start=1, end=50, positiveStrand=true, cigar=Cigar.empty, range=r4)
+      val b1 = AlignedSegment(origin=ReadOne, readStart=1, readEnd=51, positiveStrand=true, cigar=Cigar.empty, range=r1)
+      val b2 = AlignedSegment(origin=ReadOne, readStart=51, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
+      val b3 = AlignedSegment(origin=ReadTwo, readStart=51, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r4)
+      val b4 = AlignedSegment(origin=ReadTwo, readStart=1, readEnd=50, positiveStrand=true, cigar=Cigar.empty, range=r4)
       AlignedSegment.mergeAlignedSegments(
         r1Segments=IndexedSeq(b1, b2), r2Segments=IndexedSeq(b3, b4), numOverlappingSegments=1
       ) should contain theSameElementsInOrderAs IndexedSeq(b1, b2, b3, b4)
@@ -165,9 +165,9 @@ class AlignedSegmentTest extends UnitSpec {
 
     // Single overlap on the last segment of R1 and the first segment of R2
     {
-      val b1 = AlignedSegment(origin=ReadOne, start=1, end=51, positiveStrand=true, cigar=Cigar.empty, range=r1)
-      val b2 = AlignedSegment(origin=ReadOne, start=51, end=100, positiveStrand=true, cigar=Cigar.empty, range=r2)
-      val b3 = AlignedSegment(origin=ReadTwo, start=1, end=100, positiveStrand=true, cigar=Cigar.empty, range=r3)
+      val b1 = AlignedSegment(origin=ReadOne, readStart=1, readEnd=51, positiveStrand=true, cigar=Cigar.empty, range=r1)
+      val b2 = AlignedSegment(origin=ReadOne, readStart=51, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r2)
+      val b3 = AlignedSegment(origin=ReadTwo, readStart=1, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r3)
       val b23 = b2.merge(b3)
       AlignedSegment.mergeAlignedSegments(
         r1Segments=IndexedSeq(b1, b2), r2Segments=IndexedSeq(b3), numOverlappingSegments=1
@@ -176,9 +176,9 @@ class AlignedSegmentTest extends UnitSpec {
 
     // Single overlap on the last segment of R1 and the first segment of R2
     {
-      val b1 = AlignedSegment(origin=ReadOne, start=1, end=51, positiveStrand=true, cigar=Cigar.empty, range=r2)
-      val b2 = AlignedSegment(origin=ReadTwo, start=51, end=100, positiveStrand=true, cigar=Cigar.empty, range=r3)
-      val b3 = AlignedSegment(origin=ReadTwo, start=1, end=50, positiveStrand=true, cigar=Cigar.empty, range=r4)
+      val b1 = AlignedSegment(origin=ReadOne, readStart=1, readEnd=51, positiveStrand=true, cigar=Cigar.empty, range=r2)
+      val b2 = AlignedSegment(origin=ReadTwo, readStart=51, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r3)
+      val b3 = AlignedSegment(origin=ReadTwo, readStart=1, readEnd=50, positiveStrand=true, cigar=Cigar.empty, range=r4)
       val b12 = b1.merge(b2)
       AlignedSegment.mergeAlignedSegments(
         r1Segments=IndexedSeq(b1), r2Segments=IndexedSeq(b2, b3), numOverlappingSegments=1
@@ -187,12 +187,12 @@ class AlignedSegmentTest extends UnitSpec {
 
     // Length-two segment overlap
     {
-      val b1 = AlignedSegment(origin=ReadOne, start=1, end=30, positiveStrand=true, cigar=Cigar.empty, range=r1)
-      val b2 = AlignedSegment(origin=ReadOne, start=31, end=50, positiveStrand=true, cigar=Cigar.empty, range=r1)
-      val b3 = AlignedSegment(origin=ReadOne, start=51, end=100, positiveStrand=true, cigar=Cigar.empty, range=r2)
-      val b4 = AlignedSegment(origin=ReadTwo, start=51, end=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
-      val b5 = AlignedSegment(origin=ReadTwo, start=31, end=50, positiveStrand=true, cigar=Cigar.empty, range=r3)
-      val b6 = AlignedSegment(origin=ReadTwo, start=1, end=30, positiveStrand=true, cigar=Cigar.empty, range=r4)
+      val b1 = AlignedSegment(origin=ReadOne, readStart=1, readEnd=30, positiveStrand=true, cigar=Cigar.empty, range=r1)
+      val b2 = AlignedSegment(origin=ReadOne, readStart=31, readEnd=50, positiveStrand=true, cigar=Cigar.empty, range=r1)
+      val b3 = AlignedSegment(origin=ReadOne, readStart=51, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r2)
+      val b4 = AlignedSegment(origin=ReadTwo, readStart=51, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=r1)
+      val b5 = AlignedSegment(origin=ReadTwo, readStart=31, readEnd=50, positiveStrand=true, cigar=Cigar.empty, range=r3)
+      val b6 = AlignedSegment(origin=ReadTwo, readStart=1, readEnd=30, positiveStrand=true, cigar=Cigar.empty, range=r4)
       val b24 = b2.merge(b4)
       val b35 = b3.merge(b5)
       AlignedSegment.mergeAlignedSegments(

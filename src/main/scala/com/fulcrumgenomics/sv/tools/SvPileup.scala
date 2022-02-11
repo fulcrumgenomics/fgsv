@@ -202,7 +202,7 @@ object SvPileup extends LazyLogging {
     if (r1.refIndex == r2.refIndex) None
     else {
       val evidence = if (seg1.origin.isPairedWith(seg2.origin)) ReadPairInterContig else SplitReadInterContig
-      Some(PutativeBreakpoint(seg1=seg1, seg2=seg2, evidence=evidence))
+      Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=evidence))
     }
   }
 
@@ -222,7 +222,7 @@ object SvPileup extends LazyLogging {
     }
     if (innerDistance <= maxInnerDistance) None else {
       val evidence = if (seg1.origin.isPairedWith(seg2.origin)) ReadPairIntraContig else SplitReadIntraContig
-      Some(PutativeBreakpoint(seg1=seg1, seg2=seg2, evidence=evidence))
+      Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=evidence))
     }
   }
 
@@ -237,19 +237,19 @@ object SvPileup extends LazyLogging {
     require(seg1.range.refIndex == seg2.range.refIndex)
 
     if (seg1.origin.isPairedWith(seg2.origin)) { // Treat as R1->R2 or R2->R1
-      if (seg1.positiveStrand == seg2.positiveStrand) Some(PutativeBreakpoint(seg1=seg1, seg2=seg2, evidence=ReadPairTandem))
+      if (seg1.positiveStrand == seg2.positiveStrand) Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=ReadPairTandem))
       else {
         // Follows the implementation in htsjdk.samtool.SamPairUtil.getPairOrientation
         val (positiveStrandFivePrime, negativeStrandFivePrime) = {
           if (seg1.positiveStrand) (seg1.range.start, seg2.range.end) else (seg2.range.start, seg1.range.end)
         }
         if (positiveStrandFivePrime < negativeStrandFivePrime) None // FR is ok
-        else Some(PutativeBreakpoint(seg1=seg1, seg2=seg2, evidence=ReadPairReverseForward)) // RF
+        else Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=ReadPairReverseForward)) // RF
       }
     }
     else {
       if (seg1.positiveStrand == seg2.positiveStrand) None
-      else Some(PutativeBreakpoint(seg1=seg1, seg2=seg2, evidence=SplitReadOppositeStrand))
+      else Some(PutativeBreakpoint(from=seg1, into=seg2, evidence=SplitReadOppositeStrand))
     }
   }
 }

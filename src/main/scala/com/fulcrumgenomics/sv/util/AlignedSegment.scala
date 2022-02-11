@@ -14,19 +14,24 @@ import scala.collection.{BitSet, mutable}
 /** Represents an alignment segment of read to the reference. The alignment may not consume all the read bases.
  *
  * @param origin         from which read (or both) this segment comes from
- * @param start          the 1-based start in the read **in sequencing order**
- * @param end            the 1-based inclusive end in the read **in sequencing order**
+ * @param readStart      the 1-based start in the read **in sequencing order**
+ * @param readEnd        the 1-based inclusive end in the read **in sequencing order**
  * @param positiveStrand true if the read was mapped to the positive strand, false otherwise
  * @param cigar          the cigar **in sequencing order**
  * @param range          the genomic range to which this alignment maps
  */
-case class AlignedSegment(origin: SegmentOrigin, start: Int, end: Int, positiveStrand: Boolean, cigar: Cigar, range: GenomicRange) {
-  require(0 < start)
-  require(start <= end)
+case class AlignedSegment(origin: SegmentOrigin,
+                          private val readStart: Int,
+                          private val readEnd: Int,
+                          positiveStrand: Boolean,
+                          private val cigar: Cigar,
+                          range: GenomicRange) {
+  require(0 < readStart)
+  require(readStart <= readEnd)
 
   /** Returns a bit set where each bit is a query base (in sequencing order), and bit is set if this alignment maps a base */
   def toQueryBitSet: BitSet = {
-    scala.collection.BitSet(Range.inclusive(start=this.start, end=this.end): _*)
+    scala.collection.BitSet(Range.inclusive(start=this.readStart, end=this.readEnd): _*)
   }
 
   /** Returns if this alignment overlaps the other alignment on the genome, and maps to the same strand. */
@@ -42,7 +47,7 @@ case class AlignedSegment(origin: SegmentOrigin, start: Int, end: Int, positiveS
     require(this.overlapsWithStrand(other))
     val range = this.range.union(other.range)
     val origin = if (this.origin == other.origin) this.origin else SegmentOrigin.Both
-    AlignedSegment(origin=origin, start=1, end=1, positiveStrand=this.positiveStrand, cigar=Cigar.empty, range=range)
+    AlignedSegment(origin=origin, readStart=1, readEnd=1, positiveStrand=this.positiveStrand, cigar=Cigar.empty, range=range)
   }
 }
 
@@ -75,7 +80,7 @@ object AlignedSegment extends LazyLogging {
       else (trailingClipping + 1, trailingClipping + middle)
     }
 
-    AlignedSegment(origin = SegmentOrigin(rec), start = start, end = end, positiveStrand = rec.positiveStrand, cigar = rec.cigar, range = range)
+    AlignedSegment(origin = SegmentOrigin(rec), readStart = start, readEnd = end, positiveStrand = rec.positiveStrand, cigar = rec.cigar, range = range)
   }
 
   /** Builds [[AlignedSegment]]s for the given alignments for a given read, one per record. The segments returned
@@ -116,7 +121,7 @@ object AlignedSegment extends LazyLogging {
                    readLength: Int,
                    minUniqueBasesToAdd: Int): IndexedSeq[AlignedSegment] = {
     require(supplementals.nonEmpty)
-    val supplSegments = supplementals.toIndexedSeq.sortBy(b => (b.start, b.end))
+    val supplSegments = supplementals.toIndexedSeq.sortBy(b => (b.readStart, b.readEnd))
     val builder     = IndexedSeq.newBuilder[AlignedSegment]
 
     require(supplementals.forall(_.origin == primary.origin))
@@ -139,7 +144,7 @@ object AlignedSegment extends LazyLogging {
       }
     }
 
-    builder.result().sortBy(b => (b.start, b.end))
+    builder.result().sortBy(b => (b.readStart, b.readEnd))
   }
 
 
