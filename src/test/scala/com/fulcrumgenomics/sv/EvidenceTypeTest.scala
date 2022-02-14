@@ -1,7 +1,6 @@
-package com.fulcrumgenomics.sv.util
+package com.fulcrumgenomics.sv
 
-import com.fulcrumgenomics.sv.UnitSpec
-import com.fulcrumgenomics.sv.util.EvidenceType.SplitReadOppositeStrand
+import com.fulcrumgenomics.sv.EvidenceType.SplitReadOppositeStrand
 
 class EvidenceTypeTest extends UnitSpec {
   "EvidenceType.snakeName" should "convert to the name to snake-case" in {

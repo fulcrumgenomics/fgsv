@@ -1,9 +1,8 @@
-package com.fulcrumgenomics.sv.util
+package com.fulcrumgenomics.sv
 
 import com.fulcrumgenomics.alignment.Cigar
 import com.fulcrumgenomics.bam.api.SamRecord
-import com.fulcrumgenomics.sv.UnitSpec
-import com.fulcrumgenomics.sv.util.SegmentOrigin._
+import com.fulcrumgenomics.sv.SegmentOrigin._
 import com.fulcrumgenomics.testing.SamBuilder
 import com.fulcrumgenomics.testing.SamBuilder.Strand
 

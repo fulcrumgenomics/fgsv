@@ -1,6 +1,6 @@
-package com.fulcrumgenomics.sv.util
+package com.fulcrumgenomics.sv
 
-import com.fulcrumgenomics.FgBioDef.FgBioEnum
+import com.fulcrumgenomics.FgBioDef.{FgBioEnum, SumBy}
 import com.fulcrumgenomics.alignment.Cigar
 import com.fulcrumgenomics.bam.Template
 import com.fulcrumgenomics.bam.api.SamRecord
@@ -63,21 +63,18 @@ object AlignedSegment extends LazyLogging {
     require(rec.mapped)
     val range = GenomicRange(refIndex = rec.refIndex, start = rec.start, end = rec.end)
     val cigar = rec.cigar
-    val leadingClipping = cigar.iterator
-      .takeWhile(_.operator.isClipping) // take leading clipping
-      .map(_.length).sum
+
+    val leadingClipping  = cigar.iterator.takeWhile(_.operator.isClipping).sumBy(_.length)
+    val trailingClipping = cigar.reverseIterator.takeWhile(_.operator.isClipping).sumBy(_.length)
     val middle = cigar.iterator
       .dropWhile(_.operator.isClipping) // skip leading clipping
       .takeWhile(!_.operator.isClipping) // take until we hit any clipping at the end
       .filter(_.operator.consumesReadBases()) // only operators that consume read bases
-      .map(_.length).sum
-    val trailingClipping = cigar.iterator
-      .dropWhile(_.operator.isClipping) // skip leading clipping
-      .dropWhile(!_.operator.isClipping) // skip until we hit any clipping at the end
-      .map(_.length).sum
+      .sumBy(_.length)
+
     val (start, end) = {
-      if (rec.positiveStrand) (leadingClipping + 1, leadingClipping + middle)
-      else (trailingClipping + 1, trailingClipping + middle)
+      if (rec.positiveStrand) (leadingClipping + 1,  leadingClipping + middle)
+      else                    (trailingClipping + 1, trailingClipping + middle)
     }
 
     AlignedSegment(origin = SegmentOrigin(rec), readStart = start, readEnd = end, positiveStrand = rec.positiveStrand, cigar = rec.cigar, range = range)
@@ -99,7 +96,7 @@ object AlignedSegment extends LazyLogging {
     require(supplementals.nonEmpty)
     val primarySegment = AlignedSegment(primary)
     val supplSegments  = supplementals.map(AlignedSegment(_))
-    this.segmentsFrom(primary=primarySegment, supplementals=supplSegments, readLength=primary.length, minUniqueBasesToAdd=minUniqueBasesToAdd)
+    segmentsFrom(primary=primarySegment, supplementals=supplSegments, readLength=primary.length, minUniqueBasesToAdd=minUniqueBasesToAdd)
   }
 
 
@@ -185,7 +182,7 @@ object AlignedSegment extends LazyLogging {
       }
       // reverse the R2 segments as the first segments in R2 are last segments in the template when starting from the start
       // of R1, also need to switch strand as we expect FR pair
-      mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments, numOverlappingSegments=1)
+      mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments)
     }
   }
 
@@ -209,7 +206,7 @@ object AlignedSegment extends LazyLogging {
   @tailrec
   def mergeAlignedSegments(r1Segments: IndexedSeq[AlignedSegment],
                            r2Segments: IndexedSeq[AlignedSegment],
-                           numOverlappingSegments: Int): IndexedSeq[AlignedSegment] = {
+                           numOverlappingSegments: Int = 1): IndexedSeq[AlignedSegment] = {
     if (numOverlappingSegments > r1Segments.length || numOverlappingSegments > r2Segments.length) {
       r1Segments ++ r2Segments // no overlapping segments
     } else {
@@ -231,9 +228,16 @@ object AlignedSegment extends LazyLogging {
 }
 
 sealed trait SegmentOrigin extends EnumEntry {
+  import SegmentOrigin._
+
   /** Returns whether this origin and the other origin are R1 and R2, or R2 and R1, respectively.
    * This treats Both as being from either R1 and R2. */
   def isPairedWith(other: SegmentOrigin): Boolean = this != other || (this == SegmentOrigin.Both && other == SegmentOrigin.Both)
+
+  /** Returns true if both `this` and `that` represent a single read and the two reads are different (i.e. R1 and R2). */
+  def isInterRead(that: SegmentOrigin): Boolean = {
+    this != Both && that != Both && this != that
+  }
 }
 
 /** Enumeration for where a given [[AlignedSegment]] origintes. */

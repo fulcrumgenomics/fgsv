@@ -5,8 +5,8 @@ import com.fulcrumgenomics.commons.collection.BetterBufferedIterator
 import com.fulcrumgenomics.commons.util.{DelimitedDataParser, NumericCounter, Row, SimpleCounter}
 import com.fulcrumgenomics.fasta.SequenceDictionary
 import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
-import com.fulcrumgenomics.sv.util.EvidenceType
 import com.fulcrumgenomics.sopt.{arg, clp}
+import com.fulcrumgenomics.sv.EvidenceType
 import com.fulcrumgenomics.util.{Io, Metric}
 
 import scala.annotation.tailrec
