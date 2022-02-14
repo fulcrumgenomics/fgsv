@@ -70,7 +70,7 @@ object AlignedSegment extends LazyLogging {
       .dropWhile(_.operator.isClipping) // skip leading clipping
       .takeWhile(!_.operator.isClipping) // take until we hit any clipping at the end
       .filter(_.operator.consumesReadBases()) // only operators that consume read bases
-      .map(_.length).sum
+      .sumBy(_.length)
 
     val (start, end) = {
       if (rec.positiveStrand) (leadingClipping + 1,  leadingClipping + middle)

@@ -133,7 +133,7 @@ object SvPileup extends LazyLogging {
   val SamBreakpointTag: String = "be"
 
   /** Class that tracks IDs and counts for Breakpoints during discovery. */
-  private class BreakpointTracker {
+  private class BreakpointTracker extends Iterable[Breakpoint] {
     type BreakpointId = Long
 
     private var _nextId: Long   = 0L
@@ -151,6 +151,8 @@ object SvPileup extends LazyLogging {
       ns(EvidenceType.indexOf(ev)) += 1
       id
     }
+
+    override def iterator: Iterator[Breakpoint] = this.breakpoints
 
     /** Returns an iterator over the set of observed breakpoints, ordering is not predictable. */
     def breakpoints: Iterator[Breakpoint] = breakpointToId.keysIterator
