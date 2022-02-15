@@ -49,14 +49,13 @@ class SvPileup
     val tracker    = new BreakpointTracker()
     Bams.templateIterator(source)
       .tapEach(t => progress.record(t.r1.getOrElse(t.r2.get)))
-      .filter(template => template.primaryReads.forall(primaryOk))
+      .flatMap(template => filterTemplate(template, minPrimaryMapq=minPrimaryMappingQuality, minSupplementaryMapq=minSupplementaryMappingQuality))
       .foreach { template =>
         // Find the breakpoints
         val evidences = findBreakpoints(
           template                       = template,
           maxWithinReadDistance          = maxAlignedSegmentInnerDistance,
           maxReadPairInnerDistance       = maxReadPairInnerDistance,
-          minSupplementaryMappingQuality = minSupplementaryMappingQuality,
           minUniqueBasesToAdd            = minUniqueBasesToAdd,
         )
 
@@ -121,11 +120,6 @@ class SvPileup
 
   /** Converts the boolean strand info to +/-. */
   private def toStrand(positive: Boolean): String = if (positive) "+" else "-"
-
-  /** Returns true if the primary alignment is mapped and has sufficient mapping quality */
-  private def primaryOk(primary: SamRecord): Boolean = {
-    primary.mapped && primary.mapq >= minPrimaryMappingQuality
-  }
 }
 
 object SvPileup extends LazyLogging {
@@ -177,26 +171,42 @@ object SvPileup extends LazyLogging {
     def countsFor(bp: Breakpoint): Counts = this.counts.getOrElse(bp, Counts())
   }
 
+  /**
+   * Performs filtering on a Template to remove primary records that are unmapped and then remove
+   * supplementary records if there is no matching primary record retained.  If neither primary
+   * record is retained, returns None, else returns Some(Template).
+   */
+  def filterTemplate(t: Template,
+                     minPrimaryMapq: Int,
+                     minSupplementaryMapq: Int): Option[Template] = {
+    val r1PrimaryOk = t.r1.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
+    val r2PrimaryOk = t.r2.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
+
+    if (!r1PrimaryOk && !r2PrimaryOk) None else Some(
+      Template(
+        r1 = if (r1PrimaryOk) t.r1 else None,
+        r2 = if (r2PrimaryOk) t.r2 else None,
+        r1Supplementals = if (r1PrimaryOk) t.r1Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
+        r2Supplementals = if (r2PrimaryOk) t.r2Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
+      )
+    )
+  }
+
+
   /** Finds the breakpoints for the given template.
    *
    * @param template the template to examine
    * @param maxWithinReadDistance the maximum distance between two adjacent split read mappings before calling a breakpoint
    * @param maxReadPairInnerDistance the maximum inner distance between R1 and R2 before calling a breakpoint
-   * @param minSupplementaryMappingQuality the minimum mapping quality to keep a supplementary alignment
    * @param minUniqueBasesToAdd the minimum newly covered bases to keep a supplementary alignment when iteratively
    *                            adding them.
    */
   def findBreakpoints(template: Template,
                       maxWithinReadDistance: Int,
                       maxReadPairInnerDistance: Int,
-                      minSupplementaryMappingQuality: Int,
                       minUniqueBasesToAdd: Int,
                      ): IndexedSeq[BreakpointEvidence] = {
-    val segments = AlignedSegment.segmentsFrom(
-      template                       = template,
-      minSupplementaryMappingQuality = minSupplementaryMappingQuality,
-      minUniqueBasesToAdd            = minUniqueBasesToAdd
-    )
+    val segments = AlignedSegment.segmentsFrom(template, minUniqueBasesToAdd = minUniqueBasesToAdd)
 
     segments.length match {
       case 0 | 1 =>

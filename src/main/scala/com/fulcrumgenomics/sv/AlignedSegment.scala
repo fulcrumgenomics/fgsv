@@ -54,8 +54,6 @@ case class AlignedSegment(origin: SegmentOrigin,
 object AlignedSegment extends LazyLogging {
   private val NoSegments: IndexedSeq[AlignedSegment] = IndexedSeq.empty
 
-  private def fail(message: String) = throw new IllegalStateException(message)
-
   /** Builds an alignment segment from a [[SamRecord]]
    *
    * @param rec the mapped record
@@ -92,7 +90,7 @@ object AlignedSegment extends LazyLogging {
    *                            set of segments.
    */
   def segmentsFrom(primary: SamRecord,
-                   supplementals: Iterator[SamRecord],
+                   supplementals: Seq[SamRecord],
                    minUniqueBasesToAdd: Int): IndexedSeq[AlignedSegment] = {
     require(supplementals.nonEmpty)
     val primarySegment = AlignedSegment(primary)
@@ -115,12 +113,12 @@ object AlignedSegment extends LazyLogging {
    *                            set of segments.
    */
   def segmentsFrom(primary: AlignedSegment,
-                   supplementals: Iterator[AlignedSegment],
+                   supplementals: Seq[AlignedSegment],
                    readLength: Int,
                    minUniqueBasesToAdd: Int): IndexedSeq[AlignedSegment] = {
     require(supplementals.nonEmpty)
-    val supplSegments = supplementals.toIndexedSeq.sortBy(b => (b.readStart, b.readEnd))
-    val builder     = IndexedSeq.newBuilder[AlignedSegment]
+    val supplSegments = supplementals.sortBy(b => (b.readStart, b.readEnd))
+    val builder       = IndexedSeq.newBuilder[AlignedSegment]
 
     require(supplementals.forall(_.origin == primary.origin))
 
@@ -148,9 +146,9 @@ object AlignedSegment extends LazyLogging {
 
   /** Builds alignment segments from a template.
    *
-   * If no supplementary alignments exist, then an index segment for R1 and R1 respectively is returned.  Otherwise,
-   * supplementary alignments are filtered to have a minimum mapping quality, segments built for reach, and then the
-   * following iterative algorithm is performed for each read end:
+   * If no supplementary alignments exist, then a segment for each primary record (R1 and/or R2) is returned. Otherwise,
+   * segments are built for each supplementary alignment, and then the following iterative algorithm is performed for
+   * each read end:
    * 1. The primary alignment for the given read end is added to the set to keep.
    * 2. Next, the alignment segment for the supplementary alignment that maps the left-most base in sequencing order is
    * chosen.  If it maps at least the `minUniqueBasesToAdd` new bases versus those alignment segments already picked,
@@ -158,27 +156,21 @@ object AlignedSegment extends LazyLogging {
    * 3. The segments for R1 and R2 produced in step (2) are merged with the procedure described in [[mergeAlignedSegments()]].
    *
    * @param template                       the template from which alignment segments are to be produced
-   * @param minSupplementaryMappingQuality the minimum mapping quality to keep a supplementary alignment
    * @param minUniqueBasesToAdd            the minimum # of new bases that a supplementary alignment must map to keep it in the
    *                                       iterative procedure described above.
    */
-  def segmentsFrom(template: Template,
-                   minSupplementaryMappingQuality: Int,
-                   minUniqueBasesToAdd: Int): IndexedSeq[AlignedSegment] = {
+  def segmentsFrom(template: Template, minUniqueBasesToAdd: Int): IndexedSeq[AlignedSegment] = {
     val r1Primary = template.r1.filter(_.mapped)
     val r2Primary = template.r2.filter(_.mapped)
     require(r1Primary.nonEmpty || r2Primary.nonEmpty, s"${template.name} did not have a primary R1 or R2 mapped.")
 
-    val r1Supps = template.r1Supplementals.iterator.filter(_.mapq >= minSupplementaryMappingQuality)
-    val r2Supps = template.r2Supplementals.iterator.filter(_.mapq >= minSupplementaryMappingQuality)
-
-    val r1Segments = (r1Primary, r1Supps) match {
+    val r1Segments = (r1Primary, template.r1Supplementals) match {
       case (Some(pri), supps) if supps.isEmpty => IndexedSeq(AlignedSegment(pri))
       case (Some(pri), supps)                  => segmentsFrom(pri, supps, minUniqueBasesToAdd)
       case (None     , _    )                  => NoSegments
     }
 
-    val r2Segments = (r2Primary, r2Supps) match {
+    val r2Segments = (r2Primary, template.r2Supplementals) match {
       case (Some(pri), supps) if supps.isEmpty => IndexedSeq(AlignedSegment(pri))
       case (Some(pri), supps)                  => segmentsFrom(pri, supps, minUniqueBasesToAdd)
       case (None     , _    )                  => NoSegments

@@ -84,17 +84,17 @@ class AlignedSegmentTest extends UnitSpec {
 
     // Keep both
     AlignedSegment.segmentsFrom(
-      primary=primary, supplementals=Iterator(supplemental), readLength=100, minUniqueBasesToAdd=50
+      primary=primary, supplementals=Seq(supplemental), readLength=100, minUniqueBasesToAdd=50
     ) should contain theSameElementsInOrderAs IndexedSeq(primary, supplemental)
 
     // Keep only the primary, as the supplemental doesn't add enough new bases
     AlignedSegment.segmentsFrom(
-      primary=primary, supplementals=Iterator(supplemental), readLength=100, minUniqueBasesToAdd=51
+      primary=primary, supplementals=Seq(supplemental), readLength=100, minUniqueBasesToAdd=51
     ) should contain theSameElementsInOrderAs IndexedSeq(primary)
 
     // Keep one supplemental
     AlignedSegment.segmentsFrom(
-      primary=primary, supplementals=Iterator(supplemental, supplemental), readLength=100, minUniqueBasesToAdd=50
+      primary=primary, supplementals=Seq(supplemental, supplemental), readLength=100, minUniqueBasesToAdd=50
     ) should contain theSameElementsInOrderAs IndexedSeq(primary, supplemental)
 
     // A more complicated test case
@@ -111,7 +111,7 @@ class AlignedSegmentTest extends UnitSpec {
     // Will not be added, as we have zero new bases
     val s6 = AlignedSegment(origin=ReadOne, readStart=91, readEnd=100, positiveStrand=true, cigar=Cigar.empty, range=dummyRange)
     AlignedSegment.segmentsFrom(
-      primary=primary, supplementals=Iterator(s1, s2, s3, s4, s5, s6), readLength=100, minUniqueBasesToAdd=10
+      primary=primary, supplementals=Seq(s1, s2, s3, s4, s5, s6), readLength=100, minUniqueBasesToAdd=10
     ) should contain theSameElementsInOrderAs IndexedSeq(primary, s1, s3, s5)
   }
 
