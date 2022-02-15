@@ -81,7 +81,7 @@ class SvPileup
                                  tracker: BreakpointTracker,
                                  writer: SamWriter): Unit = {
     if (evidences.nonEmpty) {
-      val bps = evidences.map(e => tracker.idOf(e.breakpoint)).toSet.toSeq.sorted.mkString(",")
+      val bps = evidences.map(e => tracker(e.breakpoint).id).toSet.toSeq.sorted.mkString(",")
       val evs = evidences.map(_.evidence.snakeName).mkString(",")
       template.allReads.foreach { rec =>
         rec(SamBreakpointTag) = bps
@@ -103,14 +103,14 @@ class SvPileup
       .sortWith(Breakpoint.PairedOrdering.lt)
 
     breakpoints.foreach { bp =>
-      val id           = tracker.idOf(bp)
-      val counts       = tracker.countsFor(bp)
+      val info         = tracker(bp)
+      val id           = info.id
       val leftRefName  = dict(bp.leftRefIndex).name
       val rightRefName = dict(bp.rightRefIndex).name
 
       val values = Iterator(
         id, leftRefName, bp.leftPos, toStrand(bp.leftPositive), rightRefName, bp.rightPos, toStrand(bp.rightPositive),
-        counts.splitRead, counts.readPair, counts.total
+        info.splitRead, info.readPair, info.total
       )
       writer.write(values.mkString("", "\t", "\n"))
     }
@@ -126,21 +126,20 @@ object SvPileup extends LazyLogging {
   val SamEvidenceTag: String = "ev"
   val SamBreakpointTag: String = "be"
 
+  type BreakpointId = Long
+
   /** Value used when no breakpoints are detected. */
   private val NoBreakpoints: IndexedSeq[BreakpointEvidence] = IndexedSeq.empty
 
   /** Tracks counts of split reads vs. read pairs supporting a Breakpoint. */
-  private case class Counts(var splitRead: Int = 0 , var readPair: Int = 0) {
+  private case class BreakpointInfo(id: BreakpointId, var splitRead: Int = 0 , var readPair: Int = 0) {
     def total: Int = splitRead + readPair
   }
 
   /** Class that tracks IDs and counts for Breakpoints during discovery. */
-  private class BreakpointTracker extends Iterable[Breakpoint] {
-    type BreakpointId = Long
-
-    private var _nextId: Long   = 0L
-    private val breakpointToId = mutable.HashMap[Breakpoint, BreakpointId]()
-    private val counts         = mutable.HashMap[Breakpoint, Counts]()
+  private class BreakpointTracker extends Iterable[(Breakpoint, BreakpointInfo)] {
+    private var _nextId: Long = 0L
+    private val bpToInfo      = mutable.HashMap[Breakpoint, BreakpointInfo]()
 
     private def nextId: BreakpointId = yieldAndThen(this._nextId) { this._nextId += 1 }
 
@@ -148,27 +147,23 @@ object SvPileup extends LazyLogging {
      * Returns the numerical ID of the breakpoint.
      */
     def count(bp: Breakpoint, ev: EvidenceType): BreakpointId = {
-      val id = this.breakpointToId.getOrElseUpdate(bp, nextId)
-      val ns = this.counts.getOrElseUpdate(bp, Counts())
+      val info = this.bpToInfo.getOrElseUpdate(bp, BreakpointInfo(nextId))
 
       ev match {
-        case SplitRead => ns.splitRead += 1
-        case ReadPair  => ns.readPair  += 1
+        case SplitRead => info.splitRead += 1
+        case ReadPair  => info.readPair  += 1
       }
 
-      id
+      info.id
     }
 
-    override def iterator: Iterator[Breakpoint] = this.breakpoints
+    override def iterator: Iterator[(Breakpoint, BreakpointInfo)] = this.bpToInfo.iterator
 
     /** Returns an iterator over the set of observed breakpoints, ordering is not predictable. */
-    def breakpoints: Iterator[Breakpoint] = breakpointToId.keysIterator
-
-    /** Gets the ID of a breakpoint that has previously been tracked. */
-    def idOf(bp: Breakpoint): BreakpointId = this.breakpointToId(bp)
+    def breakpoints: Iterator[Breakpoint] = bpToInfo.keysIterator
 
     /** Gets the evidence counts for a given breakpoint in the same order as EvidenceType.values. */
-    def countsFor(bp: Breakpoint): Counts = this.counts.getOrElse(bp, Counts())
+    def apply(bp: Breakpoint): BreakpointInfo = this.bpToInfo(bp)
   }
 
   /**
