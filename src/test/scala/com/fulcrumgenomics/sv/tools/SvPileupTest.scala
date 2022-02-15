@@ -247,4 +247,17 @@ class SvPileupTest extends UnitSpec {
       bp(SplitRead, "chr2", 500, Minus, "chr3", 900, Plus),
     )
   }
+
+  it should "call a breakpoint from a single-end split read with no mate" in {
+    val r1Half1 = r("chr1", 100, Plus,  r=1, cigar="50M50S", supp=false)
+    val r1Half2 = r("chr7", 800, Plus,  r=1, cigar="50S50M", supp=true)
+    Seq(r1Half1, r1Half2).foreach { r =>
+      r.firstOfPair  = false
+      r.secondOfPair = false
+      r.paired       = false
+    }
+
+    val expected = IndexedSeq(bp(SplitRead, "chr1", 149, Plus, "chr7", 800, Plus))
+    call(t(r1Half1, r1Half2)) should contain theSameElementsInOrderAs expected
+  }
 }

@@ -52,6 +52,7 @@ case class AlignedSegment(origin: SegmentOrigin,
 }
 
 object AlignedSegment extends LazyLogging {
+  private val NoSegments: IndexedSeq[AlignedSegment] = IndexedSeq.empty
 
   private def fail(message: String) = throw new IllegalStateException(message)
 
@@ -164,22 +165,33 @@ object AlignedSegment extends LazyLogging {
   def segmentsFrom(template: Template,
                    minSupplementaryMappingQuality: Int,
                    minUniqueBasesToAdd: Int): IndexedSeq[AlignedSegment] = {
-    val r1 = template.r1.getOrElse(fail(s"No R1 for template: ${template.name}"))
-    val r2 = template.r2.getOrElse(fail(s"No R2 for template: ${template.name}"))
+    val r1Primary = template.r1.filter(_.mapped)
+    val r2Primary = template.r2.filter(_.mapped)
+    require(r1Primary.nonEmpty || r2Primary.nonEmpty, s"${template.name} did not have a primary R1 or R2 mapped.")
+
     val r1Supps = template.r1Supplementals.iterator.filter(_.mapq >= minSupplementaryMappingQuality)
     val r2Supps = template.r2Supplementals.iterator.filter(_.mapq >= minSupplementaryMappingQuality)
 
-    val r1Segments = if (r1Supps.isEmpty) IndexedSeq(AlignedSegment(r1)) else {
-      AlignedSegment.segmentsFrom(primary=r1, supplementals=r1Supps, minUniqueBasesToAdd=minUniqueBasesToAdd)
+    val r1Segments = (r1Primary, r1Supps) match {
+      case (Some(pri), supps) if supps.isEmpty => IndexedSeq(AlignedSegment(pri))
+      case (Some(pri), supps)                  => segmentsFrom(pri, supps, minUniqueBasesToAdd)
+      case (None     , _    )                  => NoSegments
     }
 
-    val r2Segments = if (r2Supps.isEmpty) IndexedSeq(AlignedSegment(r2)) else {
-      AlignedSegment.segmentsFrom(primary=r2, supplementals=r2Supps, minUniqueBasesToAdd=minUniqueBasesToAdd).reverse
+    val r2Segments = (r2Primary, r2Supps) match {
+      case (Some(pri), supps) if supps.isEmpty => IndexedSeq(AlignedSegment(pri))
+      case (Some(pri), supps)                  => segmentsFrom(pri, supps, minUniqueBasesToAdd)
+      case (None     , _    )                  => NoSegments
     }
 
-    // reverse the R2 segments as the first segments in R2 are last segments in the template when starting from the start
-    // of R1, also need to switch strand as we expect FR pair
-    mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments.map(b => b.copy(positiveStrand = !b.positiveStrand)))
+    if (r1Segments.isEmpty)
+      r2Segments
+    else if (r2Segments.isEmpty)
+      r1Segments
+    else
+      // Assume the library should be FR, reverse the R2 segments and flip their strand so that they're
+      // in the same order and orientation as R1 segments
+      mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments.reverse.map(b => b.copy(positiveStrand = !b.positiveStrand)))
   }
 
   /**
@@ -247,6 +259,6 @@ object SegmentOrigin extends FgBioEnum[SegmentOrigin] {
   case object Both extends SegmentOrigin
   /** Gets the origin from a SAM record */
   def apply(rec: SamRecord): SegmentOrigin = {
-    if (rec.firstOfPair) ReadOne else ReadTwo
+    if (rec.unpaired || rec.firstOfPair) ReadOne else ReadTwo
   }
 }
