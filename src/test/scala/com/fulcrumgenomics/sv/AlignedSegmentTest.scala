@@ -72,7 +72,7 @@ class AlignedSegmentTest extends UnitSpec {
     )
   }
 
-  "AlignmentBloc.segmentsFrom" should "create segments from a primary and one supplementals" in {
+  "AlignedSegment.segmentsFrom" should "create segments from a primary and one supplementals" in {
     val dummyRange = GenomicRange(refIndex=0, start=1, end=100)
 
     val primary = AlignedSegment(

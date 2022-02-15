@@ -169,21 +169,17 @@ object AlignedSegment extends LazyLogging {
     val r1Supps = template.r1Supplementals.iterator.filter(_.mapq >= minSupplementaryMappingQuality)
     val r2Supps = template.r2Supplementals.iterator.filter(_.mapq >= minSupplementaryMappingQuality)
 
-    if (r1Supps.isEmpty && r2Supps.isEmpty) {
-      IndexedSeq(AlignedSegment(r1), AlignedSegment(r2))
-    } else {
-      val r1Segments = if (r1Supps.isEmpty) IndexedSeq(AlignedSegment(r1)) else {
-        AlignedSegment.segmentsFrom(primary=r1, supplementals=r1Supps, minUniqueBasesToAdd=minUniqueBasesToAdd)
-      }
-      val r2Segments = if (r2Supps.isEmpty) IndexedSeq(AlignedSegment(r2)) else {
-        AlignedSegment.segmentsFrom(primary=r2, supplementals=r2Supps, minUniqueBasesToAdd=minUniqueBasesToAdd)
-          .reverse
-          .map(b => b.copy(positiveStrand = !b.positiveStrand))
-      }
-      // reverse the R2 segments as the first segments in R2 are last segments in the template when starting from the start
-      // of R1, also need to switch strand as we expect FR pair
-      mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments)
+    val r1Segments = if (r1Supps.isEmpty) IndexedSeq(AlignedSegment(r1)) else {
+      AlignedSegment.segmentsFrom(primary=r1, supplementals=r1Supps, minUniqueBasesToAdd=minUniqueBasesToAdd)
     }
+
+    val r2Segments = if (r2Supps.isEmpty) IndexedSeq(AlignedSegment(r2)) else {
+      AlignedSegment.segmentsFrom(primary=r2, supplementals=r2Supps, minUniqueBasesToAdd=minUniqueBasesToAdd).reverse
+    }
+
+    // reverse the R2 segments as the first segments in R2 are last segments in the template when starting from the start
+    // of R1, also need to switch strand as we expect FR pair
+    mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments.map(b => b.copy(positiveStrand = !b.positiveStrand)))
   }
 
   /**

@@ -54,8 +54,8 @@ class SvPileup
         // Find the breakpoints
         val evidences = findBreakpoints(
           template                       = template,
+          maxWithinReadDistance          = maxAlignedSegmentInnerDistance,
           maxReadPairInnerDistance       = maxReadPairInnerDistance,
-          maxAlignedSegmentInnerDistance = maxAlignedSegmentInnerDistance,
           minSupplementaryMappingQuality = minSupplementaryMappingQuality,
           minUniqueBasesToAdd            = minUniqueBasesToAdd,
         )
@@ -180,16 +180,15 @@ object SvPileup extends LazyLogging {
   /** Finds the breakpoints for the given template.
    *
    * @param template the template to examine
+   * @param maxWithinReadDistance the maximum distance between two adjacent split read mappings before calling a breakpoint
    * @param maxReadPairInnerDistance the maximum inner distance between R1 and R2 before calling a breakpoint
-   * @param maxAlignedSegmentInnerDistance the maximum distance between two adjacent split read mappings before calling
-   *                                       a breakpoint
-   * @param minSupplementaryMappingQuality the minimum mapping quailty to keep a supplementary alignment
+   * @param minSupplementaryMappingQuality the minimum mapping quality to keep a supplementary alignment
    * @param minUniqueBasesToAdd the minimum newly covered bases to keep a supplementary alignment when iteratively
    *                            adding them.
    */
   def findBreakpoints(template: Template,
+                      maxWithinReadDistance: Int,
                       maxReadPairInnerDistance: Int,
-                      maxAlignedSegmentInnerDistance: Int,
                       minSupplementaryMappingQuality: Int,
                       minUniqueBasesToAdd: Int,
                      ): IndexedSeq[BreakpointEvidence] = {
@@ -204,12 +203,12 @@ object SvPileup extends LazyLogging {
         NoBreakpoints
       case 2     =>
         // Special case for 2 since most templates will generate two segments and we'd like it to be efficient
-        val bp = findBreakpoint(segments.head, segments.last, maxAlignedSegmentInnerDistance , maxReadPairInnerDistance)
+        val bp = findBreakpoint(segments.head, segments.last, maxWithinReadDistance, maxReadPairInnerDistance)
         if (bp.isEmpty) NoBreakpoints else bp.toIndexedSeq
       case _     =>
         val builder = IndexedSeq.newBuilder[BreakpointEvidence]
         segments.iterator.sliding(2).foreach { case Seq(seg1, seg2) =>
-          findBreakpoint(seg1, seg2, maxAlignedSegmentInnerDistance , maxReadPairInnerDistance).foreach(builder += _)
+          findBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance).foreach(builder += _)
         }
         builder.result()
     }
@@ -218,10 +217,10 @@ object SvPileup extends LazyLogging {
   /** Checks to see if there is a breakpoint between two segments and returns it, or None. */
   private def findBreakpoint(seg1: AlignedSegment,
                              seg2: AlignedSegment,
-                             maxReadPairInnerDistance: Int,
-                             maxAlignedSegmentInnerDistance: Int): Option[BreakpointEvidence] = {
+                             maxWithinReadDistance: Int,
+                             maxReadPairInnerDistance: Int): Option[BreakpointEvidence] = {
     if (isInterContigBreakpoint(seg1, seg2) ||
-       isIntraContigBreakpoint(seg1, seg2, maxAlignedSegmentInnerDistance , maxReadPairInnerDistance)
+        isIntraContigBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance)
     ) {
       val bp = Breakpoint(seg1, seg2)
       val ev = if (seg1.origin.isInterRead(seg2.origin)) EvidenceType.ReadPair else EvidenceType.SplitRead
