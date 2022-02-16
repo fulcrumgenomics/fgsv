@@ -6,23 +6,13 @@ import enumeratum.EnumEntry
 
 import scala.collection.immutable
 
-/** An enumeration over types of SV evidence. */
+/** An enumeration over types of breakpoint evidence. */
 object EvidenceType extends FgBioEnum[EvidenceType] {
+  /** Evidence of the breakpoint was observed within aligned segments of a single read with split alignments. */
+  case object SplitRead extends EvidenceType
 
-  /** Evidence from one end of a read mapping to a different contig than the other. */
-  case object ReadPairInterContig extends EvidenceType
-  /** Evidence from one end of a read mapping to a the same contig as the other, but too far apart. */
-  case object ReadPairIntraContig extends EvidenceType
-  /** Evidence from a reverse-forward read pair orientation. */
-  case object ReadPairReverseForward extends EvidenceType
-  /** Evidence from a tandem read pair orientation. */
-  case object ReadPairTandem extends EvidenceType
-  /** Evidence from a split read mapping where adjacent segments map to different contigs. */
-  case object SplitReadInterContig extends EvidenceType
-  /** Evidence from a split read mapping where adjacent segments map to the same contig, but too far apart. */
-  case object SplitReadIntraContig extends EvidenceType
-  /** Evidence from a split read mapping where adjacent segments map to opposite genomic strands. */
-  case object SplitReadOppositeStrand extends EvidenceType
+  /** Evidence of the breakpoint was only observed _between_ reads in a read pair. */
+  case object ReadPair extends EvidenceType
 
   override val values: immutable.IndexedSeq[EvidenceType] = findValues
 }
