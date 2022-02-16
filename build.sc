@@ -90,11 +90,12 @@ object tools extends CommonModule with PublishModule with ReleaseModule {
   def ivyDeps = Agg(
     ivy"org.scala-lang:scala-compiler:${scalaVersion()}",
     ivy"com.fulcrumgenomics:fgbio_2.13:1.5.0".excludeOrg(orgsToExclude:_*),
+	ivy"org.xerial.snappy:snappy-java:1.1.8.4"
     )
 
   object test extends Tests {
     def ivyDeps = Agg(ivy"org.scalatest::scalatest:3.1.0")
-    def testFrameworks = Seq("org.scalatest.tools.Framework")
+    def testFramework = "org.scalatest.tools.Framework"
 
     // run mill tools.test.singleTest com.fulcrumgenomics.sv.x.y.x.TestClassName
     def singleTest(args: String*) = T.command {
