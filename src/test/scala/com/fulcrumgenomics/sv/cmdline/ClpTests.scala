@@ -10,6 +10,6 @@ class ClpTests extends UnitSpec with CaptureSystemStreams {
     val (output, _, _) = captureItAll { () =>
       new SvMain().makeItSo("ExampleTool".split(' ')) shouldBe 0
     }
-    output shouldBe "Hello World!\n"
+    output.contains("Hello World!") shouldBe true
   }
 }
