@@ -176,14 +176,14 @@ object AlignedSegment extends LazyLogging {
       case (None     , _    ) => NoSegments
     }
 
-    if (r1Segments.isEmpty)
-      r2Segments
-    else if (r2Segments.isEmpty)
-      r1Segments
-    else
-      // Assume the library should be FR, reverse the R2 segments and flip their strand so that they're
-      // in the same order and orientation as R1 segments
-      mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments.reverse.map(b => b.copy(positiveStrand = !b.positiveStrand)))
+    (r1Segments, r2Segments) match {
+      case (segs, IndexedSeq()) => segs
+      case (IndexedSeq(), segs) => segs
+      case (s1, s2) =>
+        // Assume the library should be FR, reverse the R2 segments and flip their strand so that they're
+        // in the same order and orientation as R1 segments
+        mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments.reverse.map(b => b.copy(positiveStrand = !b.positiveStrand)))
+    }
   }
 
   /**
@@ -240,7 +240,7 @@ sealed trait SegmentOrigin extends EnumEntry {
   }
 }
 
-/** Enumeration for where a given [[AlignedSegment]] origintes. */
+/** Enumeration for where a given [[AlignedSegment]] originates. */
 object SegmentOrigin extends FgBioEnum[SegmentOrigin] {
   def values: IndexedSeq[SegmentOrigin] = findValues
   /** R1-only segment */

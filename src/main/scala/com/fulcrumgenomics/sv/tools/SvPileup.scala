@@ -247,7 +247,7 @@ object SvPileup extends LazyLogging {
 
   /** Determines if the two segments are provide evidence of a breakpoint joining two different regions from
    * the same contig. Returns true if:
-   *   - the two segments overlap (implying some kind of duplication)
+   *   - the two segments overlap (implying some kind of duplication) (note overlapping reads will get a merged seg)
    *   - the strand of the two segments differ (implying an inversion or other rearrangement)
    *   - the second segment is before the first segment on the genome
    *   - the distance between the two segments is larger than the maximum allowed (likely a deletion)
@@ -267,9 +267,10 @@ object SvPileup extends LazyLogging {
     // the segments should all come out on the same strand.  Therefore any difference in strand is odd.  In addition
     // any segment that "moves backwards" down the genome is odd, as genome position and read position should increase
     // together.
-    seg1.positiveStrand != seg2.positiveStrand ||
-      (seg1.positiveStrand && seg2.range.start < seg1.range.end) ||
-      (!seg1.positiveStrand && seg1.range.start < seg2.range.start) || {
+    if (seg1.positiveStrand != seg2.positiveStrand) true
+    else if (seg1.positiveStrand && seg2.range.start < seg1.range.end) true
+    else if (!seg1.positiveStrand && seg1.range.start < seg2.range.start) true
+    else {
       val maxDistance = if (seg1.origin.isInterRead(seg2.origin)) maxBetweenReadDistance else maxWithinReadDistance
 
       val innerDistance = {

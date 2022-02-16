@@ -157,6 +157,14 @@ class SvPileupTest extends UnitSpec {
     call(template) should contain theSameElementsInOrderAs IndexedSeq.empty
   }
 
+  it should "not call a breakpoint from an FR pair with overlapping reads" in {
+    val template = t(
+      r("chr1", 100, Plus,  r=1, cigar="100M", supp=false),
+      r("chr1", 150, Minus, r=2, cigar="100M", supp=false),
+    )
+    call(template) should contain theSameElementsInOrderAs IndexedSeq.empty
+  }
+
   it should "call a breakpoint from a tandem read pair" in {
     val bps = call(t(
       r("chr1", 100, Plus, r=1, cigar="100M", supp=false),
