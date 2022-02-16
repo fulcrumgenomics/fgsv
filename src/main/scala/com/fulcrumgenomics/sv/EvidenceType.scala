@@ -6,7 +6,7 @@ import enumeratum.EnumEntry
 
 import scala.collection.immutable
 
-/** An enumeration over types of SV evidence. */
+/** An enumeration over types of breakpoint evidence. */
 object EvidenceType extends FgBioEnum[EvidenceType] {
   /** Evidence of the breakpoint was observed within aligned segments of a single read with split alignments. */
   case object SplitRead extends EvidenceType

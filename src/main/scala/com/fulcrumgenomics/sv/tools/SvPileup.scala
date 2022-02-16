@@ -179,8 +179,8 @@ object SvPileup extends LazyLogging {
 
     if (!r1PrimaryOk && !r2PrimaryOk) None else Some(
       Template(
-        r1 = if (r1PrimaryOk) t.r1 else None,
-        r2 = if (r2PrimaryOk) t.r2 else None,
+        r1              = if (r1PrimaryOk) t.r1 else None,
+        r2              = if (r2PrimaryOk) t.r2 else None,
         r1Supplementals = if (r1PrimaryOk) t.r1Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
         r2Supplementals = if (r2PrimaryOk) t.r2Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
       )
@@ -201,7 +201,7 @@ object SvPileup extends LazyLogging {
                       maxReadPairInnerDistance: Int,
                       minUniqueBasesToAdd: Int,
                      ): IndexedSeq[BreakpointEvidence] = {
-    val segments = AlignedSegment.segmentsFrom(template, minUniqueBasesToAdd = minUniqueBasesToAdd)
+    val segments = AlignedSegment.segmentsFrom(template, minUniqueBasesToAdd=minUniqueBasesToAdd)
 
     segments.length match {
       case 0 | 1 =>
@@ -211,11 +211,9 @@ object SvPileup extends LazyLogging {
         val bp = findBreakpoint(segments.head, segments.last, maxWithinReadDistance, maxReadPairInnerDistance)
         if (bp.isEmpty) NoBreakpoints else bp.toIndexedSeq
       case _     =>
-        val builder = IndexedSeq.newBuilder[BreakpointEvidence]
-        segments.iterator.sliding(2).foreach { case Seq(seg1, seg2) =>
-          findBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance).foreach(builder += _)
-        }
-        builder.result()
+        segments.iterator.sliding(2).flatMap { case Seq(seg1, seg2) =>
+          findBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance)
+        }.toIndexedSeq
     }
   }
 
@@ -236,7 +234,7 @@ object SvPileup extends LazyLogging {
     }
   }
 
-  /** Determines if two segments are evidence of breakpoint joining two different contigs.
+  /** Determines if two segments are evidence of a breakpoint joining two different contigs.
    *
    * @param seg1 the first alignment segment
    * @param seg2 the second alignment segment

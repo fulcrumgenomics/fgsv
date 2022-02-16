@@ -165,15 +165,15 @@ object AlignedSegment extends LazyLogging {
     require(r1Primary.nonEmpty || r2Primary.nonEmpty, s"${template.name} did not have a primary R1 or R2 mapped.")
 
     val r1Segments = (r1Primary, template.r1Supplementals) match {
-      case (Some(pri), supps) if supps.isEmpty => IndexedSeq(AlignedSegment(pri))
-      case (Some(pri), supps)                  => segmentsFrom(pri, supps, minUniqueBasesToAdd)
-      case (None     , _    )                  => NoSegments
+      case (Some(pri), Seq()) => IndexedSeq(AlignedSegment(pri))
+      case (Some(pri), supps) => segmentsFrom(pri, supps, minUniqueBasesToAdd)
+      case (None     , _    ) => NoSegments
     }
 
     val r2Segments = (r2Primary, template.r2Supplementals) match {
-      case (Some(pri), supps) if supps.isEmpty => IndexedSeq(AlignedSegment(pri))
-      case (Some(pri), supps)                  => segmentsFrom(pri, supps, minUniqueBasesToAdd)
-      case (None     , _    )                  => NoSegments
+      case (Some(pri), Seq()) => IndexedSeq(AlignedSegment(pri))
+      case (Some(pri), supps) => segmentsFrom(pri, supps, minUniqueBasesToAdd)
+      case (None     , _    ) => NoSegments
     }
 
     if (r1Segments.isEmpty)
