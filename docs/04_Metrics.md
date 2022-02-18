@@ -12,9 +12,32 @@ the type of each field/column is given, including two commonly used types:
 
 |Metric Type|Description|
 |-----------|-----------|
+|[BreakpointPileup](#breakpointpileup)|Represents a pileup of evidence (reads, read-pairs) for a breakpoint|
 |[MergedPileup](#mergedpileup)||
 
 ## Metric File Descriptions
+
+
+### BreakpointPileup
+
+Represents a pileup of evidence (reads, read-pairs) for a breakpoint.  If `split_reads` is greater than
+zero then the breakpoint location is supported at the sequence level and should be considered precise
+though in the presence of repetitive sequence it may not be 100% accurate.  If `split_reads` is zero then
+the only information comes from read-pairs and the breakpoint information should be considered imprecise.
+
+
+|Column|Type|Description|
+|------|----|-----------|
+|id|String|An ID assigned to the breakpoint that can be used to lookup supporting reads in the BAM.|
+|left_contig|String|The contig of chromosome on which the left hand side of the breakpoint exists.|
+|left_pos|Int|The position (possibly imprecise) of the left-hand breakend.|
+|left_strand|Char|The strand of the left-hand breakend; sequence reads would traverse this strand                      in order to arrive at the breakend and transit into the right-hand side of the breakpoint.|
+|right_contig|String|The contig of chromosome on which the left hand side of the breakpoint exists.|
+|right_pos|Int|The position (possibly imprecise) of the right-hand breakend.|
+|right_strand|Char|The strand of the right-hand breakend;. sequence reads would continue reading onto                      this strand after transiting the breakpoint from the left breakend|
+|split_reads|Int|The number of templates/inserts with split-read alignments that identified this breakpoint.|
+|read_pairs|Int|The number of templates/inserts with read-pair alignments (and without split-read alignments)                      that identified this breakpoint.|
+|total|Int|The total number of templates/inserts that identified this breakpoint|
 
 
 ### MergedPileup
@@ -27,13 +50,16 @@ the type of each field/column is given, including two commonly used types:
 |left_start|Int||
 |left_end|Int||
 |left_mean|Int||
+|left_strand|Char||
 |right_contig|String||
 |right_start|Int||
 |right_end|Int||
 |right_mean|Int||
-|same_strand|Boolean||
+|right_strand|Char||
 |mean_count|Double||
 |stddev_count|Double||
 |median_count|Double||
 |pileups|Int||
-|counter|SimpleCounter[EvidenceType]||
+|split_reads|Int||
+|read_pairs|Int||
+|total_evidence|Int||
