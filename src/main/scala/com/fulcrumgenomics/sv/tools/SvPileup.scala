@@ -107,7 +107,7 @@ class SvPileup
     val breakpoints = tracker.breakpoints.toIndexedSeq.sortWith(Breakpoint.PairedOrdering.lt)
 
     breakpoints.foreach { bp =>
-      val info       = tracker(bp)
+      val info   = tracker(bp)
       val metric = BreakpointPileup(
         id           = info.id.toString,
         left_contig  = dict(bp.leftRefIndex).name,
