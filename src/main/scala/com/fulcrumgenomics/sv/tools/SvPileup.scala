@@ -1,6 +1,6 @@
 package com.fulcrumgenomics.sv.tools
 
-import com.fulcrumgenomics.FgBioDef.{PathPrefix, PathToBam, SafelyClosable, yieldAndThen}
+import com.fulcrumgenomics.FgBioDef.{FilePath, PathPrefix, PathToBam, SafelyClosable, yieldAndThen}
 import com.fulcrumgenomics.bam.api.{SamRecord, SamSource, SamWriter}
 import com.fulcrumgenomics.bam.{Bams, Template}
 import com.fulcrumgenomics.commons.io.PathUtil
@@ -9,8 +9,9 @@ import com.fulcrumgenomics.fasta.SequenceDictionary
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.sv.EvidenceType._
 import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
-import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, EvidenceType}
-import com.fulcrumgenomics.util.{Io, ProgressLogger}
+import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, BreakpointPileup, EvidenceType}
+import com.fulcrumgenomics.util.{Io, Metric, ProgressLogger}
+import htsjdk.samtools.SAMFileHeader.{GroupOrder, SortOrder}
 
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
@@ -43,10 +44,17 @@ class SvPileup
   Io.assertCanWriteFile(output)
 
   override def execute(): Unit = {
-    val source     = SamSource(PathUtil.pathTo(output + ".bam"))
-    val writer     = SamWriter(PathUtil.pathTo(output + ".txt"), header=source.header)
-    val progress   = new ProgressLogger(logger, noun="templates")
-    val tracker    = new BreakpointTracker()
+    val source    = SamSource(input)
+    val outHeader = {
+      val h = source.header.clone()
+      h.setSortOrder(SortOrder.unsorted)
+      h.setGroupOrder(GroupOrder.query)
+      h
+    }
+    val bamOut    = SamWriter(PathUtil.pathTo(s"${output}.bam"), header=outHeader)
+    val progress  = new ProgressLogger(logger, noun="templates")
+    val tracker   = new BreakpointTracker()
+
     Bams.templateIterator(source)
       .tapEach(t => progress.record(t.r1.getOrElse(t.r2.get)))
       .flatMap(template => filterTemplate(template, minPrimaryMapq=minPrimaryMappingQuality, minSupplementaryMapq=minSupplementaryMappingQuality))
@@ -63,15 +71,15 @@ class SvPileup
         evidences.foreach { ev => tracker.count(ev.breakpoint, ev.evidence) }
 
         // Optionally write the reads to a BAM
-        maybeWriteTemplate(template, evidences, tracker, writer)
+        maybeWriteTemplate(template, evidences, tracker, bamOut)
       }
 
     progress.logLast()
     source.safelyClose()
-    writer.close()
+    bamOut.close()
 
     // Write the results
-    writeBreakpoints(tracker=tracker, dict=source.dict)
+    writeBreakpoints(path=PathUtil.pathTo(s"${output}.txt"), tracker=tracker, dict=source.dict)
   }
 
   /** Annotates the reads for the given template and writes them to the writer if provided.
@@ -91,35 +99,33 @@ class SvPileup
     }
   }
 
-  /** Coalesce the breakpoint counts and write them. */
-  private def writeBreakpoints(tracker: BreakpointTracker, dict: SequenceDictionary): Unit = {
-    val writer = Io.toWriter(output)
-    val fields = Seq("id", "left_contig", "left_pos", "left_strand", "right_contig", "right_pos", "right_strand",
-      "split_reads", "read_pairs", "total")
-    writer.write(fields.mkString("", "\t", "\n"))
-
-    val breakpoints = tracker.breakpoints
-      .toIndexedSeq
-      .sortWith(Breakpoint.PairedOrdering.lt)
+  /** Write the breakpoints to a file. */
+  private def writeBreakpoints(path: FilePath,
+                               tracker: BreakpointTracker,
+                               dict: SequenceDictionary): Unit = {
+    val writer      = Metric.writer[BreakpointPileup](path)
+    val breakpoints = tracker.breakpoints.toIndexedSeq.sortWith(Breakpoint.PairedOrdering.lt)
 
     breakpoints.foreach { bp =>
       val info         = tracker(bp)
-      val id           = info.id
-      val leftRefName  = dict(bp.leftRefIndex).name
-      val rightRefName = dict(bp.rightRefIndex).name
-
-      val values = Iterator(
-        id, leftRefName, bp.leftPos, toStrand(bp.leftPositive), rightRefName, bp.rightPos, toStrand(bp.rightPositive),
-        info.splitRead, info.readPair, info.total
+      val metric       = BreakpointPileup(
+        id           = info.id.toString,
+        left_contig  = dict(bp.leftRefIndex).name,
+        left_pos     = bp.leftPos,
+        left_strand  = if (bp.leftPositive) '+' else '-',
+        right_contig = dict(bp.rightRefIndex).name,
+        right_pos    = bp.rightPos,
+        right_strand = if (bp.rightPositive) '+' else '-',
+        split_reads  = info.splitRead,
+        read_pairs   = info.readPair,
+        total        = info.total,
       )
-      writer.write(values.mkString("", "\t", "\n"))
+
+      writer.write(metric)
     }
 
     writer.close()
   }
-
-  /** Converts the boolean strand info to +/-. */
-  private def toStrand(positive: Boolean): String = if (positive) "+" else "-"
 }
 
 object SvPileup extends LazyLogging {
