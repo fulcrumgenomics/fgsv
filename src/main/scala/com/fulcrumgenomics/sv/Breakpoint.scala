@@ -35,9 +35,9 @@ object Breakpoint {
     override def compare(x: Breakpoint, y: Breakpoint): Int = {
       var result              = x.leftRefIndex.compare(y.leftRefIndex)
       if (result == 0) result = x.rightRefIndex.compare(y.rightRefIndex)
-      if (result == 0) result = x.leftPos.compare(y.rightPos)
+      if (result == 0) result = x.leftPos.compare(y.leftPos)
       if (result == 0) result = x.rightPos.compare(y.rightPos)
-      if (result == 0) result = x.leftPositive.compare(y.rightPositive)
+      if (result == 0) result = x.leftPositive.compare(y.leftPositive)
       if (result == 0) result = x.rightPositive.compare(y.rightPositive)
       result
     }

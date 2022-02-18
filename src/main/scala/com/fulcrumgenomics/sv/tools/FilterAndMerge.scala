@@ -1,17 +1,15 @@
 package com.fulcrumgenomics.sv.tools
 
-import com.fulcrumgenomics.FgBioDef.{BetterBufferedIteratorScalaWrapper, FilePath, PathToSequenceDictionary}
+import com.fulcrumgenomics.FgBioDef._
 import com.fulcrumgenomics.commons.collection.BetterBufferedIterator
-import com.fulcrumgenomics.commons.util.{DelimitedDataParser, NumericCounter, Row, SimpleCounter}
+import com.fulcrumgenomics.commons.util.{NumericCounter, SimpleCounter}
 import com.fulcrumgenomics.fasta.SequenceDictionary
-import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
 import com.fulcrumgenomics.sopt.{arg, clp}
-import com.fulcrumgenomics.sv.EvidenceType
+import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
+import com.fulcrumgenomics.sv.{BreakpointPileup, EvidenceType}
 import com.fulcrumgenomics.util.{Io, Metric}
 
-import scala.annotation.tailrec
 import scala.collection.immutable.IndexedSeq
-import scala.collection.mutable
 
 @clp(group=ClpGroups.All, description=
   """
@@ -33,166 +31,106 @@ class FilterAndMerge
     val dict = SequenceDictionary(this.dict)
 
     // Read in the pileups
-    val parser = DelimitedDataParser(path=input, delimiter='\t')
-    val iter   = parser
-      .map(row => Pileup(row))
-      .filter(pileup => pileup.total >= minPre)
+    val iter   = Metric.iterator[BreakpointPileup](input)
+      .filter(_.total >= minPre)
       .toIndexedSeq
-      .groupBy(_.sameStrand) // this ensures we get pileups adjacent on the same strand
-      .flatMap { case (_, pileups) =>
-        pileups.sortBy(p => (p.leftContig, p.rightContig, p.leftPos, p.rightPos))
-      }
+      .sortBy(p => (p.left_contig, p.right_contig, p.left_strand, p.right_strand, p.left_pos, p.right_pos))
       .iterator
       .bufferBetter
 
     // Iterate
     val results = IndexedSeq.newBuilder[MergedPileup]
     while (iter.hasNext) {
-      val first   = iter.next()
-      val builder = IndexedSeq.newBuilder[Pileup]
-      builder += first
-      val pileups = nextGroup(iter=iter, builder=builder, prev=first)
+      val pileups = nextGroup(iter=iter)
       val merged  = MergedPileup(pileups)
-      if (merged.counter.total >= minPost) {
+      if (merged.total_evidence >= minPost) {
         results += merged
       }
     }
 
     // Write
-    val writer = Io.toWriter(output)
-    writer.write(MergedPileup.header.mkString("\t"))
-    writer.write('\n')
-    results.result()
-      .sortBy { p =>
-        (dict(p.left_contig).index, dict(p.right_contig).index, p.left_start, p.left_end, p.right_start, p.right_end)
-      }
-      .foreach { merged =>
-        val values = MergedPileup.values(merged)
-        writer.write(values.mkString("\t"))
-        writer.write('\n')
-      }
-    writer.close()
+    Metric.write(output, results.result().sorted)
   }
 
-  @tailrec
-  private def nextGroup(iter: BetterBufferedIterator[Pileup],
-                        builder: mutable.Builder[Pileup, IndexedSeq[Pileup]],
-                        prev: Pileup
-                       ): IndexedSeq[Pileup] = {
-    if (iter.isEmpty || !prev.nearby(other=iter.head, slop=slop)) {
-      builder.result()
-    } else {
-      val next = iter.next()
-      builder += next
-      nextGroup(iter=iter, builder=builder, prev=next)
+  private def nextGroup(iter: BetterBufferedIterator[BreakpointPileup]): IndexedSeq[BreakpointPileup] = {
+    val first   = iter.head
+    val builder = IndexedSeq.newBuilder[BreakpointPileup]
+    while (iter.hasNext && nearby(first, iter.head, slop)) {
+      builder += iter.next()
     }
+
+    builder.result()
+  }
+
+  /** Are two breakpoints compatible with each other and have positions that are +/- slop on each breakend. */
+  private def nearby(a: BreakpointPileup, b: BreakpointPileup, slop: Int): Boolean = {
+    a.left_contig == b.left_contig &&
+      a.right_contig == b.right_contig &&
+      a.left_strand == b.left_strand &&
+      a.right_strand == b.right_strand &&
+      Math.abs(a.left_pos - b.left_pos) <= slop &&
+      Math.abs(a.right_pos - b.right_pos) <= slop
   }
 }
 
-case class Pileup
-(
-  leftContig: String,
-  leftPos: Int,
-  rightContig: String,
-  rightPos: Int,
-  sameStrand: Boolean,
-  counter: SimpleCounter[EvidenceType]
-) {
-  def total: Long = counter.total
-  def nearby(other: Pileup, slop: Int): Boolean = {
-    leftContig == other.leftContig &&
-      rightContig == other.rightContig &&
-      Math.abs(leftPos - other.leftPos) <= slop &&
-      Math.abs(rightPos - other.rightPos) <= slop &&
-      sameStrand == other.sameStrand
+case class MergedPileup(left_contig: String,
+                        left_start: Int,
+                        left_end: Int,
+                        left_mean: Int,
+                        left_strand: Char,
+                        right_contig: String,
+                        right_start: Int,
+                        right_end: Int,
+                        right_mean: Int,
+                        right_strand: Char,
+                        mean_count: Double,
+                        stddev_count: Double,
+                        median_count: Double,
+                        pileups: Int,
+                        split_reads: Int,
+                        read_pairs: Int,
+                        total_evidence: Int
+                       ) extends Metric with Ordered[MergedPileup] {
+  override def compare(that: MergedPileup): Int = {
+    var result              = this.left_contig.compare(that.left_contig)
+    if (result == 0) result = this.right_contig.compare(that.right_contig)
+    if (result == 0) result = this.left_start.compare(that.left_start)
+    if (result == 0) result = this.right_start.compare(that.right_start)
+    if (result == 0) result = this.left_strand.compare(that.left_strand)
+    if (result == 0) result = this.right_strand.compare(that.right_strand)
+    if (result == 0) result = this.total_evidence.compare(that.total_evidence)
+    result
   }
 }
-
-object Pileup {
-  def apply(row: Row): Pileup = {
-    val counter = new SimpleCounter[EvidenceType]()
-    EvidenceType.values.foreach { evidence =>
-      counter.count(evidence, row[Int](evidence.snakeName))
-    }
-    new Pileup(
-      leftContig  = row[String]("left_contig"),
-      leftPos     = row[Int]("left_pos"),
-      rightContig = row[String]("right_contig"),
-      rightPos    = row[Int]("right_pos"),
-      sameStrand  = row[Boolean]("same_strand"),
-      counter     = counter
-    )
-  }
-}
-
-case class MergedPileup
-(
-  left_contig: String,
-  left_start: Int,
-  left_end: Int,
-  left_mean: Int,
-  right_contig: String,
-  right_start: Int,
-  right_end: Int,
-  right_mean: Int,
-  same_strand: Boolean,
-  mean_count: Double,
-  stddev_count: Double,
-  median_count: Double,
-  pileups: Int,
-  counter: SimpleCounter[EvidenceType]
-) extends Metric
 
 object MergedPileup {
-  def apply(pileups: IndexedSeq[Pileup]): MergedPileup = {
-    val counter = new SimpleCounter[EvidenceType]()
-    pileups.foreach { pileup =>
-      counter += pileup.counter
-    }
+  def apply(pileups: IndexedSeq[BreakpointPileup]): MergedPileup = {
+    val splitReads = pileups.sumBy(_.split_reads)
+    val readPairs  = pileups.sumBy(_.read_pairs)
+    val counts     = NumericCounter(pileups.map(_.total).iterator)
+    val total      = splitReads + readPairs
+    val leftMean   = pileups.iterator.map(p => p.total * p.left_pos / total).sum
+    val rightMean  = pileups.iterator.map(p => p.total * p.right_pos / total).sum
+    val meanCount  = counts.mean()
 
-    val counts    = NumericCounter[Long](pileups.map(_.total).iterator)
-    val total     = counts.totalMass.toDouble
-    val leftMean  = pileups.iterator.map(p => p.total * p.leftPos / total).sum
-    val rightMean = pileups.iterator.map(p => p.total * p.rightPos / total).sum
-    val meanCount = counts.mean()
     new MergedPileup(
-      left_contig  = pileups.head.leftContig,
-      left_start   = pileups.map(_.leftPos).min,
-      left_end     = pileups.map(_.leftPos).max,
-      left_mean    = Math.round(leftMean).toInt,
-      right_contig = pileups.head.rightContig,
-      right_start  = pileups.map(_.rightPos).min,
-      right_end    = pileups.map(_.rightPos).max,
-      right_mean   = Math.round(rightMean).toInt,
-      same_strand  = pileups.head.sameStrand,
-      mean_count   = meanCount,
-      stddev_count = counts.stddev(meanCount),
-      median_count = counts.median(),
-      pileups      = pileups.length,
-      counter      = counter
+      left_contig    = pileups.head.left_contig,
+      left_start     = pileups.map(_.left_pos).min,
+      left_end       = pileups.map(_.left_pos).max,
+      left_mean      = Math.round(leftMean),
+      left_strand    = pileups.head.left_strand,
+      right_contig   = pileups.head.right_contig,
+      right_start    = pileups.map(_.right_pos).min,
+      right_end      = pileups.map(_.right_pos).max,
+      right_mean     = Math.round(rightMean),
+      right_strand   = pileups.head.right_strand,
+      mean_count     = meanCount,
+      stddev_count   = counts.stddev(meanCount),
+      median_count   = counts.median(),
+      pileups        = pileups.length,
+      split_reads    = splitReads,
+      read_pairs     = readPairs,
+      total_evidence = splitReads + readPairs
     )
-  }
-
-  val header: IndexedSeq[String] = {
-    val names = Metric.names[MergedPileup].filter(_ != "counter")
-    val types = EvidenceType.values.map(_.snakeName)
-    (names ++ Seq("templates") ++ types).toIndexedSeq
-  }
-
-  private val namesAndIndex: Seq[(String, Int)] = {
-    Metric.names[MergedPileup]
-      .zipWithIndex
-      .filter(_._1 != "counter")
-      .map { case (name, index) => name -> index }
-  }
-
-  def values(mergedPileup: MergedPileup): IndexedSeq[String] = {
-    val metricValues = mergedPileup.productIterator.toIndexedSeq
-    val staticValues = namesAndIndex.iterator.map { case (_, index) => metricValues(index) }
-    val total        = mergedPileup.counter.total
-    val counts       = EvidenceType.values.iterator.map { t => mergedPileup.counter.countOf(t) }
-    val values       = (staticValues ++ Iterator(total) ++ counts).map(mergedPileup.formatValue).toIndexedSeq
-    require(values.length == header.length, s"values: ${values.length} header: ${header.length}")
-    values
   }
 }
