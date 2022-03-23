@@ -32,13 +32,4 @@ object BreakpointEvidence {
  */
 case class BreakpointEvidence(breakpoint: Breakpoint,
                               evidence: EvidenceType,
-                              recs: Set[SamRecord] = Set.empty) extends Ordered[BreakpointEvidence] {
-
-  /** Defines an ordering over breakpoints, first by genomic coordinates of the left then right end, then evidence type.
-   *  Ignores the origin of the breakpoint and evidence */
-  def compare(that: BreakpointEvidence): Int = {
-    var result              = this.breakpoint.compare(that.breakpoint)
-    if (result == 0) result = this.evidence.compare(that.evidence)
-    result
-  }
-}
+                              recs: Set[SamRecord] = Set.empty)
