@@ -9,7 +9,7 @@ import com.fulcrumgenomics.fasta.SequenceDictionary
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.sv.EvidenceType._
 import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
-import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, BreakpointPileup, EvidenceType}
+import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, BreakpointPileup, EvidenceType, SegmentOrigin}
 import com.fulcrumgenomics.util.{Io, Metric, ProgressLogger}
 import htsjdk.samtools.SAMFileHeader.{GroupOrder, SortOrder}
 
@@ -61,10 +61,10 @@ class SvPileup
       .foreach { template =>
         // Find the breakpoints
         val evidences = findBreakpoints(
-          template                       = template,
-          maxWithinReadDistance          = maxAlignedSegmentInnerDistance,
-          maxReadPairInnerDistance       = maxReadPairInnerDistance,
-          minUniqueBasesToAdd            = minUniqueBasesToAdd,
+          template                 = template,
+          maxWithinReadDistance    = maxAlignedSegmentInnerDistance,
+          maxReadPairInnerDistance = maxReadPairInnerDistance,
+          minUniqueBasesToAdd      = minUniqueBasesToAdd,
         )
 
         // Update the tracker
@@ -89,9 +89,10 @@ class SvPileup
                                  tracker: BreakpointTracker,
                                  writer: SamWriter): Unit = {
     if (evidences.nonEmpty) {
-      val bps = evidences.map(e => tracker(e.breakpoint).id).toSet.toSeq.sorted.mkString(",")
-      val evs = evidences.map(_.evidence.snakeName).mkString(",")
       template.allReads.foreach { rec =>
+        val readEvs = evidences.filter(_.recs.contains(rec))
+        val bps     = readEvs.map(e => tracker(e.breakpoint).id).toSet.toSeq.sorted.mkString(",")
+        val evs     = readEvs.map(_.evidence.snakeName).mkString(",")
         rec(SamBreakpointTag) = bps
         rec(SamEvidenceTag)   = evs
         writer += rec
@@ -231,9 +232,8 @@ object SvPileup extends LazyLogging {
     if (isInterContigBreakpoint(seg1, seg2) ||
         isIntraContigBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance)
     ) {
-      val bp = Breakpoint(seg1, seg2)
       val ev = if (seg1.origin.isInterRead(seg2.origin)) EvidenceType.ReadPair else EvidenceType.SplitRead
-      Some(BreakpointEvidence(bp, ev))
+      Some(BreakpointEvidence(from=seg1, into=seg2, evidence=ev))
     }
     else {
       None

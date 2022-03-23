@@ -19,13 +19,16 @@ import scala.collection.{BitSet, mutable}
  * @param positiveStrand true if the read was mapped to the positive strand, false otherwise
  * @param cigar          the cigar **in sequencing order**
  * @param range          the genomic range to which this alignment maps
+ * @param recs           the records from which this aligned segment originated from.  May contain multiple if two
+ *                       aligned segments were merged, and be empty if not tracking.
  */
 case class AlignedSegment(origin: SegmentOrigin,
                           private val readStart: Int,
                           private val readEnd: Int,
                           positiveStrand: Boolean,
                           private val cigar: Cigar,
-                          range: GenomicRange) {
+                          range: GenomicRange,
+                          recs: Seq[SamRecord] = IndexedSeq.empty) {
   require(0 < readStart)
   require(readStart <= readEnd)
 
@@ -47,7 +50,9 @@ case class AlignedSegment(origin: SegmentOrigin,
     require(this.overlapsWithStrand(other))
     val range = this.range.union(other.range)
     val origin = if (this.origin == other.origin) this.origin else SegmentOrigin.Both
-    AlignedSegment(origin=origin, readStart=1, readEnd=1, positiveStrand=this.positiveStrand, cigar=Cigar.empty, range=range)
+    AlignedSegment(
+      origin=origin, readStart=1, readEnd=1, positiveStrand=this.positiveStrand, cigar=Cigar.empty, range=range, recs=this.recs++other.recs
+    )
   }
 }
 
@@ -76,7 +81,15 @@ object AlignedSegment extends LazyLogging {
       else                    (trailingClipping + 1, trailingClipping + middle)
     }
 
-    AlignedSegment(origin = SegmentOrigin(rec), readStart = start, readEnd = end, positiveStrand = rec.positiveStrand, cigar = rec.cigar, range = range)
+    AlignedSegment(
+      origin         = SegmentOrigin(rec),
+      readStart      = start,
+      readEnd        = end,
+      positiveStrand = rec.positiveStrand,
+      cigar          = rec.cigar,
+      range          = range,
+      recs           = IndexedSeq(rec)
+    )
   }
 
   /** Builds [[AlignedSegment]]s for the given alignments for a given read, one per record. The segments returned

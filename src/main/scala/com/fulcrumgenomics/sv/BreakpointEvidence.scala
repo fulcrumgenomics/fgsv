@@ -1,5 +1,7 @@
 package com.fulcrumgenomics.sv
 
+import com.fulcrumgenomics.bam.api.SamRecord
+
 object BreakpointEvidence {
   /**
    * Builds a breakpoint evidence from two aligned segments and an evidence type.
@@ -17,7 +19,7 @@ object BreakpointEvidence {
   def apply(from: AlignedSegment,
             into: AlignedSegment,
             evidence: EvidenceType): BreakpointEvidence = {
-    new BreakpointEvidence(breakpoint = Breakpoint(from, into), evidence = evidence)
+    new BreakpointEvidence(breakpoint=Breakpoint(from, into), evidence=evidence, recs=(from.recs++into.recs).toSet)
   }
 }
 
@@ -26,10 +28,14 @@ object BreakpointEvidence {
  *
  * @param breakpoint the breakpoint for which we have evidence
  * @param evidence the type of evidence for this breakpoint
+ * @param recs the [[SamRecord]](s) that provided evidence of this break point
  */
-case class BreakpointEvidence(breakpoint: Breakpoint, evidence: EvidenceType) extends Ordered[BreakpointEvidence] {
+case class BreakpointEvidence(breakpoint: Breakpoint,
+                              evidence: EvidenceType,
+                              recs: Set[SamRecord] = Set.empty) extends Ordered[BreakpointEvidence] {
 
-  /** Defines an ordering over breakpoints, first by genomic coordinates of the left then right end, then evidence type. */
+  /** Defines an ordering over breakpoints, first by genomic coordinates of the left then right end, then evidence type.
+   *  Ignores the origin of the breakpoint and evidence */
   def compare(that: BreakpointEvidence): Int = {
     var result              = this.breakpoint.compare(that.breakpoint)
     if (result == 0) result = this.evidence.compare(that.evidence)
