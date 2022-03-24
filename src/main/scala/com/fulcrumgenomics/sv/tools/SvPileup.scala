@@ -56,7 +56,7 @@ class SvPileup
     val tracker   = new BreakpointTracker()
 
     Bams.templateIterator(source)
-      .tapEach(t => progress.record(t.r1.getOrElse(t.r2.get)))
+      .tapEach(_ => progress.record())
       .flatMap(template => filterTemplate(template, minPrimaryMapq=minPrimaryMappingQuality, minSupplementaryMapq=minSupplementaryMappingQuality))
       .foreach { template =>
         // Find the breakpoints
