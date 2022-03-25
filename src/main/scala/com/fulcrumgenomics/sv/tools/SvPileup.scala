@@ -58,7 +58,7 @@ import scala.collection.mutable
     |
     |Finally, pairs of adjacent aligned segments are examined for evidence of a breakpoint, such that genomic distance
     |between them beyond either `--max-read-pair-inner-distance` for aligned segments from different read pairs, or
-    |--max-aligned-segment-inner-distance` for aligned segments from the same read in a pair (i.e. split-read mapping).
+    |`--max-aligned-segment-inner-distance` for aligned segments from the same read in a pair (i.e. split-read mapping).
     |Split read evidence will be returned in favor of across-read-pair evidence when both are present.
   """)
 class SvPileup

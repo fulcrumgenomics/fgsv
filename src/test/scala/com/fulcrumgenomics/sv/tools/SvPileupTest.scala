@@ -449,10 +449,10 @@ class SvPileupTest extends UnitSpec {
     val fromTag = s"0;from;${SplitRead.snakeName}"
     val intoTag = f"0;into;${SplitRead.snakeName}"
 
-//    // r1Half2 is not annotated, since it is superseded by r1Half1 -> fullR2
-//    SamPairUtil.setMateInfo(r1Half1.asSam, fullR2.asSam, true)
-//    SamPairUtil.setMateInformationOnSupplementalAlignment(r1Half2.asSam, fullR2.asSam, true)
-//    test(Seq(r1Half2, r1Half1, fullR2), Seq(fromTag, "", intoTag))
+    // r1Half2 is not annotated, since it is superseded by r1Half1 -> fullR2
+    SamPairUtil.setMateInfo(r1Half1.asSam, fullR2.asSam, true)
+    SamPairUtil.setMateInformationOnSupplementalAlignment(r1Half2.asSam, fullR2.asSam, true)
+    test(Seq(r1Half2, r1Half1, fullR2), Seq(fromTag, "", intoTag))
 
     // fullR1 does not contain the breakpoint, while r2Half2 -> r2Half1 does (NB: the from->into are on the reverse strand)
     SamPairUtil.setMateInfo(fullR1.asSam, r2Half1.asSam, true)
