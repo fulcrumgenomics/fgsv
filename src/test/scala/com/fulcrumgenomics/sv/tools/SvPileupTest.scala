@@ -142,17 +142,30 @@ class SvPileupTest extends UnitSpec {
   def bp(ev: EvidenceType,
          lChrom: String, lPos: Int, lStrand: Strand,
          rChrom: String, rPos: Int, rStrand: Strand,
-         recs: Iterator[SamRecord] = Iterator.empty): BreakpointEvidence = {
+         from: Iterator[SamRecord] = Iterator.empty,
+         into: Iterator[SamRecord] = Iterator.empty): BreakpointEvidence = {
+    val breakpoint = Breakpoint(
+      leftRefIndex  = builder.dict(lChrom).index,
+      leftPos       = lPos,
+      leftPositive  = lStrand == Plus,
+      rightRefIndex = builder.dict(rChrom).index,
+      rightPos      = rPos,
+      rightPositive = rStrand == Plus
+    )
     BreakpointEvidence(
-      Breakpoint(
-        leftRefIndex  = builder.dict(lChrom).index,
-        leftPos       = lPos,
-        leftPositive  = lStrand == Plus,
-        rightRefIndex = builder.dict(rChrom).index,
-        rightPos      = rPos,
-        rightPositive = rStrand == Plus),
-      ev,
-      recs.toSet)
+      breakpoint = breakpoint,
+      evidence   = ev,
+      from       = from.toSet,
+      into       = into.toSet
+    )
+  }
+
+  def bp(ev: EvidenceType,
+         lChrom: String, lPos: Int, lStrand: Strand,
+         rChrom: String, rPos: Int, rStrand: Strand,
+         from: SamRecord,
+         into: SamRecord): BreakpointEvidence = {
+    this.bp(ev, lChrom, lPos, lStrand, rChrom, rPos, rStrand, Iterator(from), Iterator(into))
   }
 
 
@@ -180,7 +193,7 @@ class SvPileupTest extends UnitSpec {
     val bps = call(template)
 
     bps should contain theSameElementsInOrderAs IndexedSeq(
-      bp(ReadPair, "chr1", 199, Plus, "chr1", 349, Minus, template.allReads)
+      bp(ReadPair, "chr1", 199, Plus, "chr1", 349, Minus, template.r1.value, template.r2.value)
     )
   }
 
@@ -192,7 +205,7 @@ class SvPileupTest extends UnitSpec {
     val bps = call(template)
 
     bps should contain theSameElementsInOrderAs IndexedSeq(
-      bp(ReadPair, "chr1", 100, Minus, "chr1", 349, Minus, template.allReads)
+      bp(ReadPair, "chr1", 100, Minus, "chr1", 349, Minus, template.r1.value, template.r2.value)
     )
   }
 
@@ -204,7 +217,7 @@ class SvPileupTest extends UnitSpec {
     val bps = call(template)
 
     bps should contain theSameElementsInOrderAs IndexedSeq(
-      bp(ReadPair, "chr1", 199, Plus, "chr1", 10000, Plus, template.allReads)
+      bp(ReadPair, "chr1", 199, Plus, "chr1", 10000, Plus, template.r1.value, template.r2.value)
     )
   }
 
@@ -216,7 +229,7 @@ class SvPileupTest extends UnitSpec {
     val bps = call(template)
 
     bps should contain theSameElementsInOrderAs IndexedSeq(
-      bp(ReadPair, "chr1", 199, Plus, "chr2", 300, Plus, template.allReads)
+      bp(ReadPair, "chr1", 199, Plus, "chr2", 300, Plus, template.r1.value, template.r2.value)
     )
   }
 
@@ -232,13 +245,13 @@ class SvPileupTest extends UnitSpec {
     val r2Half2 = r("chr1", 120, Minus, r=2, cigar="30M70S", supp=true)
 
     call(t(r1Half2, r1Half1, fullR2)) should contain theSameElementsInOrderAs IndexedSeq(
-      bp(SplitRead, "chr1", 149, Plus, "chr7", 800, Plus, Iterator(r1Half1, r1Half2))
+      bp(SplitRead, "chr1", 149, Plus, "chr7", 800, Plus, r1Half1, r1Half2)
     )
     call(t(fullR1,  r2Half1, r2Half2)) should contain theSameElementsInOrderAs IndexedSeq(
-      bp(SplitRead, "chr1", 149, Plus, "chr7", 800, Plus, Iterator(r2Half1, r2Half2))
+      bp(SplitRead, "chr1", 149, Plus, "chr7", 800, Plus, r2Half2, r2Half1)
     )
     call(t(r1Half1, r1Half2, r2Half1, r2Half2)) should contain theSameElementsInOrderAs IndexedSeq(
-      bp(SplitRead, "chr1", 149, Plus, "chr7", 800, Plus, Iterator(r1Half1, r1Half2, r2Half1, r2Half2))
+      bp(SplitRead, "chr1", 149, Plus, "chr7", 800, Plus, Iterator(r1Half1, r2Half2), Iterator(r1Half2, r2Half1))
     )
   }
 
@@ -249,7 +262,7 @@ class SvPileupTest extends UnitSpec {
       // Read 1 supports a breakpoint at chr1:149F>chr7:800F
       r("chr1", 100, Plus,  r=1, cigar="50M50S", supp=false),
       r("chr7", 800, Plus,  r=1, cigar="50S50M", supp=true),
-      // Read 1 supports a breakpoint at chr1:151F>chr7:802F
+      // Read 2 supports a breakpoint at chr1:151F>chr7:802F
       r("chr7", 802, Minus, r=2, cigar="30S70M", supp=false),
       r("chr1", 122, Minus, r=2, cigar="30M70S", supp=true)
     )
@@ -258,7 +271,9 @@ class SvPileupTest extends UnitSpec {
     // The one breakpoint that does come out is not ideal in this case, but maybe that's ok?
     // I think ideally it would call chr1:149F>chr7:800F or chr1:151F>chr7:802F not chr1:151F>chr7:800F
     bps should contain theSameElementsInOrderAs IndexedSeq(
-      bp(SplitRead, "chr1", 151, Plus, "chr7", 800, Plus, template.allReads)
+      bp(SplitRead, "chr1", 151, Plus, "chr7", 800, Plus,
+        from = template.r2Supplementals.headOption.value,
+        into = template.r1Supplementals.headOption.value)
     )
   }
 
@@ -267,14 +282,13 @@ class SvPileupTest extends UnitSpec {
       r("chr1", 100, Plus,  r=1, cigar="30M70S",    supp=false),
       r("chr2", 500, Minus, r=1, cigar="30S40M30S", supp=true),
       r("chr3", 900, Plus,  r=1, cigar="70S30M",    supp=true),
-
       r("chr3", 1200, Minus, r=2, cigar="100M", supp=false),
     )
     val bps = call(t(recs:_*))
 
     bps should contain theSameElementsInOrderAs IndexedSeq(
-      bp(SplitRead, "chr1", 129, Plus,  "chr2", 539, Minus, recs.take(2).iterator),
-      bp(SplitRead, "chr2", 500, Minus, "chr3", 900, Plus, recs.slice(1, 3).iterator),
+      bp(SplitRead, "chr1", 129, Plus,  "chr2", 539, Minus, recs(0), recs(1)),
+      bp(SplitRead, "chr2", 500, Minus, "chr3", 900, Plus, recs(1), recs(2)),
     )
   }
 
@@ -282,7 +296,7 @@ class SvPileupTest extends UnitSpec {
     val r1Half1 = r("chr1", 100, Plus,  r=0, cigar="50M50S", supp=false)
     val r1Half2 = r("chr7", 800, Plus,  r=0, cigar="50S50M", supp=true)
 
-    val expected = IndexedSeq(bp(SplitRead, "chr1", 149, Plus, "chr7", 800, Plus, Iterator(r1Half1, r1Half2)))
+    val expected = IndexedSeq(bp(SplitRead, "chr1", 149, Plus, "chr7", 800, Plus, r1Half1, r1Half2))
     call(t(r1Half1, r1Half2)) should contain theSameElementsInOrderAs expected
   }
 
@@ -432,20 +446,23 @@ class SvPileupTest extends UnitSpec {
       }
     }
 
-    // r1Half2 is not annotated, since it is superseded by r1Half1 -> fullR2
-    SamPairUtil.setMateInfo(r1Half1.asSam, fullR2.asSam, true)
-    SamPairUtil.setMateInformationOnSupplementalAlignment(r1Half2.asSam, fullR2.asSam, true)
-    test(Seq(r1Half2, r1Half1, fullR2), Seq("0", "", "0"))
+    val fromTag = s"0;from;${SplitRead.snakeName}"
+    val intoTag = f"0;into;${SplitRead.snakeName}"
 
-    // fullR1 does not contain the breakpoint, while r2Half1 -> r2Half2 does
+//    // r1Half2 is not annotated, since it is superseded by r1Half1 -> fullR2
+//    SamPairUtil.setMateInfo(r1Half1.asSam, fullR2.asSam, true)
+//    SamPairUtil.setMateInformationOnSupplementalAlignment(r1Half2.asSam, fullR2.asSam, true)
+//    test(Seq(r1Half2, r1Half1, fullR2), Seq(fromTag, "", intoTag))
+
+    // fullR1 does not contain the breakpoint, while r2Half2 -> r2Half1 does (NB: the from->into are on the reverse strand)
     SamPairUtil.setMateInfo(fullR1.asSam, r2Half1.asSam, true)
     SamPairUtil.setMateInformationOnSupplementalAlignment(r2Half2.asSam, fullR1.asSam, true)
-    test(Seq(fullR1,  r2Half1, r2Half2), Seq("", "0", "0"))
+    test(Seq(fullR1, r2Half1, r2Half2), Seq("", intoTag, fromTag))
 
     // all the reads are annotated!
     SamPairUtil.setMateInfo(r1Half1.asSam, r2Half1.asSam, true)
     SamPairUtil.setMateInformationOnSupplementalAlignment(r2Half2.asSam, r1Half1.asSam, true)
     SamPairUtil.setMateInformationOnSupplementalAlignment(r1Half2.asSam, r2Half1.asSam, true)
-    test(Seq(r1Half1, r1Half2, r2Half1, r2Half2), Seq("0", "0", "0", "0"))
+    test(Seq(r1Half1, r1Half2, r2Half1, r2Half2), Seq(fromTag, intoTag, intoTag, fromTag))
   }
 }

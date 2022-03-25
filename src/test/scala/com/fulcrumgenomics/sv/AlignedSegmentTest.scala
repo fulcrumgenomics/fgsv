@@ -20,7 +20,7 @@ class AlignedSegmentTest extends UnitSpec {
 
     def test(rec: SamRecord, expected: AlignedSegment): Unit = {
       val actual = AlignedSegment(rec)
-      actual shouldBe expected.copy(recs=IndexedSeq(rec))
+      actual shouldBe expected.copy(left=IndexedSeq(rec), right=IndexedSeq(rec))
     }
 
     // All bases mapped
@@ -121,10 +121,10 @@ class AlignedSegmentTest extends UnitSpec {
   }
 
   "AlignedSegment.mergeReadSegments" should " merge read segments" in {
-    val r1 = GenomicRange(refIndex=0, start=1, end=50) // overlaps nothing
+    val r1 = GenomicRange(refIndex=0, start=1, end=50)    // overlaps nothing
     val r2 = GenomicRange(refIndex=0, start=100, end=150) // overlaps r1
     val r3 = GenomicRange(refIndex=0, start=125, end=175) // overlaps r2
-    val r4 = GenomicRange(refIndex=1, start=1, end=1000) // overlaps nothing
+    val r4 = GenomicRange(refIndex=1, start=1, end=1000)  // overlaps nothing
 
     // No overlaps with one segment on R1 and two on R2
     {

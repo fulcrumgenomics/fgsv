@@ -19,8 +19,12 @@ import scala.collection.{BitSet, mutable}
  * @param positiveStrand true if the read was mapped to the positive strand, false otherwise
  * @param cigar          the cigar **in sequencing order**
  * @param range          the genomic range to which this alignment maps
- * @param recs           the records from which this aligned segment originated from.  May contain multiple if two
- *                       aligned segments were merged, and be empty if not tracking.
+ * @param left           the records from which this aligned segment originated from and abut the left genomic range of
+ *                       this segment.  May contain multiple if two aligned segments were merged, and be empty if not
+ *                       tracking.
+ * @param right          the records from which this aligned segment originated from and abut the left genomic range of
+ *                       this segment.  May contain multiple if two aligned segments were merged, and be empty if not
+ *                       tracking.
  */
 case class AlignedSegment(origin: SegmentOrigin,
                           private val readStart: Int,
@@ -28,7 +32,8 @@ case class AlignedSegment(origin: SegmentOrigin,
                           positiveStrand: Boolean,
                           private val cigar: Cigar,
                           range: GenomicRange,
-                          recs: Seq[SamRecord] = IndexedSeq.empty) {
+                          left: Seq[SamRecord] = IndexedSeq.empty,
+                          right: Seq[SamRecord] = IndexedSeq.empty) {
   require(0 < readStart)
   require(readStart <= readEnd)
 
@@ -45,13 +50,30 @@ case class AlignedSegment(origin: SegmentOrigin,
   /** Merges the other segment with itself, returning a new alignment segment.  The two segments must overlap on the genome
    * and map to teh same strand.  If merging segments from different reads (i.e. R1 and R2), the segment origin will be set
    * to both.  The resulting cigar will be empty, and the start and end offset in the read will both be 1.
-   * */
-  def merge(other: AlignedSegment): AlignedSegment = {
+   *
+   * @param other the other segment to merge
+   * @param slop the existing tracked records in this or other will be tracked in the new alignment based on being within
+   *             the given slop of the new segments' left-most or right-most position respectively.
+   * @return
+   */
+  def merge(other: AlignedSegment, slop: Int = 0): AlignedSegment = {
     require(this.overlapsWithStrand(other))
-    val range = this.range.union(other.range)
+    val range  = this.range.union(other.range)
     val origin = if (this.origin == other.origin) this.origin else SegmentOrigin.Both
+    val left   = (math.abs(this.range.start - range.start) <= slop, math.abs(other.range.start - range.start) <= slop) match {
+      case (true, true)  => this.left ++ other.left
+      case (true, false) => this.left
+      case (false, true) => other.left
+      case _             => throw new IllegalStateException("Bug: no left end tracked alignments")
+    }
+    val right = (math.abs(this.range.end - range.end) <= slop, math.abs(other.range.end - range.end) <= slop) match {
+      case (true, true)  => this.right ++ other.right
+      case (true, false) => this.right
+      case (false, true) => other.right
+      case _             => throw new IllegalStateException("Bug: no right end tracked alignments")
+    }
     AlignedSegment(
-      origin=origin, readStart=1, readEnd=1, positiveStrand=this.positiveStrand, cigar=Cigar.empty, range=range, recs=this.recs++other.recs
+      origin=origin, readStart=1, readEnd=1, positiveStrand=this.positiveStrand, cigar=Cigar.empty, range=range, left=left, right=right
     )
   }
 }
@@ -88,7 +110,8 @@ object AlignedSegment extends LazyLogging {
       positiveStrand = rec.positiveStrand,
       cigar          = rec.cigar,
       range          = range,
-      recs           = IndexedSeq(rec)
+      left           = IndexedSeq(rec),
+      right          = IndexedSeq(rec)
     )
   }
 
@@ -168,11 +191,13 @@ object AlignedSegment extends LazyLogging {
    * it is added to the set.  This is performed until no more supplementary alignments remain.
    * 3. The segments for R1 and R2 produced in step (2) are merged with the procedure described in [[mergeAlignedSegments()]].
    *
-   * @param template                       the template from which alignment segments are to be produced
-   * @param minUniqueBasesToAdd            the minimum # of new bases that a supplementary alignment must map to keep it in the
-   *                                       iterative procedure described above.
+   * @param template            the template from which alignment segments are to be produced
+   * @param minUniqueBasesToAdd the minimum # of new bases that a supplementary alignment must map to keep it in the
+   *                            iterative procedure described above.
+   * @param slop                the number of bases of slop to allow when determining which records to track for the
+   *                            left or right side of an aligned segment when merging segments
    */
-  def segmentsFrom(template: Template, minUniqueBasesToAdd: Int): IndexedSeq[AlignedSegment] = {
+  def segmentsFrom(template: Template, minUniqueBasesToAdd: Int, slop: Int = 0): IndexedSeq[AlignedSegment] = {
     val r1Primary = template.r1.filter(_.mapped)
     val r2Primary = template.r2.filter(_.mapped)
     require(r1Primary.nonEmpty || r2Primary.nonEmpty, s"${template.name} did not have a primary R1 or R2 mapped.")
@@ -189,13 +214,17 @@ object AlignedSegment extends LazyLogging {
       case (None     , _    ) => NoSegments
     }
 
+    // Merge segments if necessary
     (r1Segments, r2Segments) match {
       case (segs, IndexedSeq()) => segs
       case (IndexedSeq(), segs) => segs
-      case (s1, s2) =>
+      case _                    =>
         // Assume the library should be FR, reverse the R2 segments and flip their strand so that they're
         // in the same order and orientation as R1 segments
-        mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments.reverse.map(b => b.copy(positiveStrand = !b.positiveStrand)))
+        mergeAlignedSegments(
+          r1Segments = r1Segments,
+          r2Segments = r2Segments.reverse.map(b => b.copy(positiveStrand = !b.positiveStrand)),
+          slop       = slop)
     }
   }
 
@@ -214,12 +243,15 @@ object AlignedSegment extends LazyLogging {
    * @param r1Segments             the alignment segments from read one sorted ascending the start of the read in sequencing order.
    * @param r2Segments             the alignment segments from read two sorted ascending the start of the read in sequencing order.
    * @param numOverlappingSegments the # of overlapping segments to examine
+   * @param slop                   the number of bases of slop to allow when determining which records to track for the
+   *                               left or right side of an aligned segment when merging segments
    * @return
    */
   @tailrec
   def mergeAlignedSegments(r1Segments: IndexedSeq[AlignedSegment],
                            r2Segments: IndexedSeq[AlignedSegment],
-                           numOverlappingSegments: Int = 1): IndexedSeq[AlignedSegment] = {
+                           numOverlappingSegments: Int = 1,
+                           slop: Int = 0): IndexedSeq[AlignedSegment] = {
     if (numOverlappingSegments > r1Segments.length || numOverlappingSegments > r2Segments.length) {
       r1Segments ++ r2Segments // no overlapping segments
     } else {
@@ -230,11 +262,11 @@ object AlignedSegment extends LazyLogging {
         // merge and return
         val leading  = r1Segments.take(r1Segments.length - numOverlappingSegments)
         val trailing = r2Segments.takeRight(r2Segments.length - numOverlappingSegments)
-        val middle   = r1SubSegments.zip(r2SubSegments).map { case (seg1, seg2) => seg1.merge(seg2) }
+        val middle   = r1SubSegments.zip(r2SubSegments).map { case (seg1, seg2) => seg1.merge(seg2, slop=slop) }
         leading ++ middle ++ trailing
       } else {
         // recurse
-        mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments, numOverlappingSegments=numOverlappingSegments + 1)
+        mergeAlignedSegments(r1Segments=r1Segments, r2Segments=r2Segments, numOverlappingSegments=numOverlappingSegments + 1, slop=slop)
       }
     }
   }

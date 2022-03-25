@@ -19,7 +19,12 @@ object BreakpointEvidence {
   def apply(from: AlignedSegment,
             into: AlignedSegment,
             evidence: EvidenceType): BreakpointEvidence = {
-    new BreakpointEvidence(breakpoint=Breakpoint(from, into), evidence=evidence, recs=(from.recs++into.recs).toSet)
+    new BreakpointEvidence(
+      breakpoint = Breakpoint(from, into),
+      evidence   = evidence,
+      from       = (if (from.positiveStrand) from.right else from.left).toSet,
+      into       = (if (into.positiveStrand) into.left else into.right).toSet
+    )
   }
 }
 
@@ -28,8 +33,10 @@ object BreakpointEvidence {
  *
  * @param breakpoint the breakpoint for which we have evidence
  * @param evidence the type of evidence for this breakpoint
- * @param recs the [[SamRecord]](s) that provided evidence of this break point
+ * @param from the [[SamRecord]](s) that provided evidence of this break point going "from" the breakpoint
+ * @param into the [[SamRecord]](s) that provided evidence of this break point going "into" the breakpoint
  */
 case class BreakpointEvidence(breakpoint: Breakpoint,
                               evidence: EvidenceType,
-                              recs: Set[SamRecord] = Set.empty)
+                              from: Set[SamRecord] = Set.empty,
+                              into: Set[SamRecord] = Set.empty)

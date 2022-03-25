@@ -1,7 +1,7 @@
 package com.fulcrumgenomics.sv.tools
 
 import com.fulcrumgenomics.FgBioDef.{FilePath, PathPrefix, PathToBam, SafelyClosable, yieldAndThen}
-import com.fulcrumgenomics.bam.api.{SamRecord, SamSource, SamWriter}
+import com.fulcrumgenomics.bam.api.{SamSource, SamWriter}
 import com.fulcrumgenomics.bam.{Bams, Template}
 import com.fulcrumgenomics.commons.io.PathUtil
 import com.fulcrumgenomics.commons.util.LazyLogging
@@ -9,7 +9,7 @@ import com.fulcrumgenomics.fasta.SequenceDictionary
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.sv.EvidenceType._
 import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
-import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, BreakpointPileup, EvidenceType, SegmentOrigin}
+import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, BreakpointPileup, EvidenceType}
 import com.fulcrumgenomics.util.{Io, Metric, ProgressLogger}
 import htsjdk.samtools.SAMFileHeader.{GroupOrder, SortOrder}
 
@@ -36,6 +36,9 @@ class SvPileup
  @arg(flag='q', doc="The minimum mapping quality for primary alignments") minPrimaryMappingQuality: Int = 30,
  @arg(flag='Q', doc="The minimum mapping quality for supplementary alignments") minSupplementaryMappingQuality: Int = 18,
  @arg(flag='b', doc="The minimum # of uncovered query bases needed to add a supplemental alignment") minUniqueBasesToAdd: Int = 20,
+ @arg(flag='s', doc="""
+   |The number of bases of slop to allow when determining which records to track for the left or right
+   |side of an aligned segment when merging segments.""") slop: Int = 5
 ) extends SvTool {
 
   import SvPileup._
@@ -51,7 +54,7 @@ class SvPileup
       h.setGroupOrder(GroupOrder.query)
       h
     }
-    val bamOut    = SamWriter(PathUtil.pathTo(s"${output}.bam"), header=outHeader)
+    val bamOut    = SamWriter(PathUtil.pathTo(s"$output.bam"), header=outHeader)
     val progress  = new ProgressLogger(logger, noun="templates")
     val tracker   = new BreakpointTracker()
 
@@ -65,6 +68,7 @@ class SvPileup
           maxWithinReadDistance    = maxAlignedSegmentInnerDistance,
           maxReadPairInnerDistance = maxReadPairInnerDistance,
           minUniqueBasesToAdd      = minUniqueBasesToAdd,
+          slop                     = slop
         )
 
         // Update the tracker
@@ -79,7 +83,7 @@ class SvPileup
     bamOut.close()
 
     // Write the results
-    writeBreakpoints(path=PathUtil.pathTo(s"${output}.txt"), tracker=tracker, dict=source.dict)
+    writeBreakpoints(path=PathUtil.pathTo(s"$output.txt"), tracker=tracker, dict=source.dict)
   }
 
   /** Annotates the reads for the given template and writes them to the writer if provided.
@@ -90,11 +94,13 @@ class SvPileup
                                  writer: SamWriter): Unit = {
     if (evidences.nonEmpty) {
       template.allReads.foreach { rec =>
-        val readEvs = evidences.filter(_.recs.contains(rec))
-        val bps     = readEvs.map(e => tracker(e.breakpoint).id).toSet.toSeq.sorted.mkString(",")
-        val evs     = readEvs.map(_.evidence.snakeName).mkString(",")
-        rec(SamBreakpointTag) = bps
-        rec(SamEvidenceTag)   = evs
+        val builder = IndexedSeq.newBuilder[String]
+        evidences.foreach { ev =>
+          val id = tracker(ev.breakpoint).id
+          if (ev.from.contains(rec)) builder.addOne(f"$id;from;${ev.evidence.snakeName}")
+          if (ev.into.contains(rec)) builder.addOne(f"$id;into;${ev.evidence.snakeName}")
+        }
+        rec(SamBreakpointTag) = builder.result().mkString(",")
         writer += rec
       }
     }
@@ -130,7 +136,6 @@ class SvPileup
 }
 
 object SvPileup extends LazyLogging {
-  val SamEvidenceTag: String = "ev"
   val SamBreakpointTag: String = "be"
 
   type BreakpointId = Long
@@ -174,7 +179,7 @@ object SvPileup extends LazyLogging {
   }
 
   /**
-   * Performs filtering on a Template to remove primary records that are unmapped and then remove
+   * Performs filtering on a [[Template]] to remove primary records that are unmapped and then remove
    * supplementary records if there is no matching primary record retained.  If neither primary
    * record is retained, returns None, else returns Some(Template).
    */
@@ -202,13 +207,16 @@ object SvPileup extends LazyLogging {
    * @param maxReadPairInnerDistance the maximum inner distance between R1 and R2 before calling a breakpoint
    * @param minUniqueBasesToAdd the minimum newly covered bases to keep a supplementary alignment when iteratively
    *                            adding them.
+   * @param slop                the number of bases of slop to allow when determining which records to track for the
+   *                            left or right side of an aligned segment when merging segments
    */
   def findBreakpoints(template: Template,
                       maxWithinReadDistance: Int,
                       maxReadPairInnerDistance: Int,
                       minUniqueBasesToAdd: Int,
+                      slop: Int = 0
                      ): IndexedSeq[BreakpointEvidence] = {
-    val segments = AlignedSegment.segmentsFrom(template, minUniqueBasesToAdd=minUniqueBasesToAdd)
+    val segments = AlignedSegment.segmentsFrom(template, minUniqueBasesToAdd=minUniqueBasesToAdd, slop=slop)
 
     segments.length match {
       case 0 | 1 =>
