@@ -21,12 +21,45 @@ import scala.collection.mutable
   """
     |Collates a pileup of putative structural variant supporting reads.
     |
+    |## Outputs
+    |
     |Two output files will be created:
     |
-    |1. `<output-prefix>.txt`: a tab-delimited file describing SV pileups, one line per breakpiont event.
+    |1. `<output-prefix>.txt`: a tab-delimited file describing SV pileups, one line per breakpoint event.  The returned
+    |   breakpoint will be canonicalized such that the "left" side of the breakpoint will have the lower (or equal to)
+    |   position on the genome vs. the "right"s side.
     |2. `<output-prefix>.bam`: a SAM/BAM file containing reads that contain SV breakpoint evidence annotated with SAM
-    |  tags.  The `ev` SAM tag lists the type of evidence found, while the `be` list the unique breakpoint identifier
-    |  output in (1) above.
+    |  tag.
+    |
+    |The `be` SAM tag contains a comma-delimited list of breakpoints to which a given read belongs.  Each element is
+    |a semi-colon delimited, with three fields:
+    |
+    |1. The unique breakpoint identifier (same identifier found in the tab-delimited output).
+    |2. Either "from" or "into", such that when traversing the breakpoint would read through "from" and then into
+    |   "into" in the sequencing order of the read pair.  For a split-read alignment, the "from" contains the aligned
+    |   portion of the read that comes from earlier in the read in sequencing order.  For an alignment of a read-pair
+    |   spanning the breakpoint, then "from" should be read-one of the pair and "into" should be read-two of the pair.
+    |3. The type of breakpoint evidence: either "split_read" for observations of an aligned segment of a single read
+    |   with split alignments, or "read_pair" for observations _between_ reads in a read pair.
+    |
+    |## Algorithm Overview
+    |
+    |Putative breakpoints are identified by examining the alignments for each template. The alignments are transformed
+    |into aligned segments in the order they were sequenced.  Each aligned segment represents the full genomic span of
+    |the mapped bases.  This is performed first for the primary alignments.  Next, supplementary alignments are added
+    |only if they map read bases that have not been previously covered by other alignments (see
+    |`--min-unique-bases-to-add`).  This is iteratively performed until supplementary alignments have been exhausted.
+    |
+    |Next, aligned segments that have overlapping genomic mapped bases are merged into a single aligned
+    |segment.  In this case, the two or more read mappings merged are associated with either the left side or right
+    |side of that aligned segment, controlled by examining how close to the end of the new aligned segment the given
+    |read mapping occurs (see `--slop` option).  This used to identify which reads traverse "from" and "into" the
+    |breakpoint as described above.
+    |
+    |Finally, pairs of adjacent aligned segments are examined for evidence of a breakpoint, such that genomic distance
+    |between them beyond either `--max-read-pair-inner-distance` for aligned segments from different read pairs, or
+    |--max-aligned-segment-inner-distance` for aligned segments from the same read in a pair (i.e. split-read mapping).
+    |Split read evidence will be returned in favor of across-read-pair evidence when both are present.
   """)
 class SvPileup
 (@arg(flag='i', doc="The input query sorted or grouped BAM") input: PathToBam,
@@ -100,7 +133,8 @@ class SvPileup
           if (ev.from.contains(rec)) builder.addOne(f"$id;from;${ev.evidence.snakeName}")
           if (ev.into.contains(rec)) builder.addOne(f"$id;into;${ev.evidence.snakeName}")
         }
-        rec(SamBreakpointTag) = builder.result().mkString(",")
+        val values = builder.result()
+        if (values.nonEmpty) rec(SamBreakpointTag) = values.mkString(",")
         writer += rec
       }
     }

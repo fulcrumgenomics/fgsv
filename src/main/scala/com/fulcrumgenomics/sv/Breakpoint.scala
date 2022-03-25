@@ -90,7 +90,7 @@ case class Breakpoint(leftRefIndex: Int,
     rightPositive = !leftPositive
   )
 
-  /** Returns true if the representation of the breakend is canonical, with the left hand side of the break
+  /** Returns true if the representation of the breakpoint is canonical, with the left hand side of the break
    * earlier on the genome than the right hand side. */
   def isCanonical: Boolean = (leftRefIndex < rightRefIndex) ||
     (leftRefIndex == rightRefIndex && leftPos < rightPos) ||
