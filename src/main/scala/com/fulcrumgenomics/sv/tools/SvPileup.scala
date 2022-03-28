@@ -32,14 +32,16 @@ import scala.collection.mutable
     |  tag.
     |
     |The `be` SAM tag contains a comma-delimited list of breakpoints to which a given read belongs.  Each element is
-    |a semi-colon delimited, with three fields:
+    |a semi-colon delimited, with four fields:
     |
     |1. The unique breakpoint identifier (same identifier found in the tab-delimited output).
-    |2. Either "from" or "into", such that when traversing the breakpoint would read through "from" and then into
+    |2. Either "left" or "right, corresponding to if the read shows evidence of the genomic left or right side of the
+    |   breakpoint as found in the breakpoint file (i.e. `left_pos` or `right_pos`).
+    |3. Either "from" or "into", such that when traversing the breakpoint would read through "from" and then into
     |   "into" in the sequencing order of the read pair.  For a split-read alignment, the "from" contains the aligned
     |   portion of the read that comes from earlier in the read in sequencing order.  For an alignment of a read-pair
     |   spanning the breakpoint, then "from" should be read-one of the pair and "into" should be read-two of the pair.
-    |3. The type of breakpoint evidence: either "split_read" for observations of an aligned segment of a single read
+    |4. The type of breakpoint evidence: either "split_read" for observations of an aligned segment of a single read
     |   with split alignments, or "read_pair" for observations _between_ reads in a read pair.
     |
     |## Algorithm Overview
@@ -130,8 +132,14 @@ class SvPileup
         val builder = IndexedSeq.newBuilder[String]
         evidences.foreach { ev =>
           val id = tracker(ev.breakpoint).id
-          if (ev.from.contains(rec)) builder.addOne(f"$id;from;${ev.evidence.snakeName}")
-          if (ev.into.contains(rec)) builder.addOne(f"$id;into;${ev.evidence.snakeName}")
+          if (ev.from.contains(rec)) {
+            val leftOrRight = if (ev.fromIsLeft) "left" else "right"
+            builder.addOne(f"$id;$leftOrRight;from;${ev.evidence.snakeName}")
+          }
+          if (ev.into.contains(rec)) {
+            val leftOrRight = if (ev.fromIsLeft) "right" else "left"
+            builder.addOne(f"$id;$leftOrRight;into;${ev.evidence.snakeName}")
+          }
         }
         val values = builder.result()
         if (values.nonEmpty) rec(SamBreakpointTag) = values.mkString(",")

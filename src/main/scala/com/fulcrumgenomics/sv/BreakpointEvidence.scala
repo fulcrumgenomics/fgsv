@@ -19,11 +19,14 @@ object BreakpointEvidence {
   def apply(from: AlignedSegment,
             into: AlignedSegment,
             evidence: EvidenceType): BreakpointEvidence = {
+    val breakpoint = Breakpoint(from, into, canonicalize=false)
+    val isCanonical = breakpoint.isCanonical
     new BreakpointEvidence(
-      breakpoint = Breakpoint(from, into),
+      breakpoint = if (isCanonical) breakpoint else breakpoint.reversed,
       evidence   = evidence,
       from       = (if (from.positiveStrand) from.right else from.left).toSet,
-      into       = (if (into.positiveStrand) into.left else into.right).toSet
+      into       = (if (into.positiveStrand) into.left else into.right).toSet,
+      fromIsLeft = isCanonical,
     )
   }
 }
@@ -35,8 +38,10 @@ object BreakpointEvidence {
  * @param evidence the type of evidence for this breakpoint
  * @param from the [[SamRecord]](s) that provided evidence of this break point going "from" the breakpoint
  * @param into the [[SamRecord]](s) that provided evidence of this break point going "into" the breakpoint
+ * @param fromIsLeft if the records in `from` correspond to the left side of the breakpoint, otherwise the right
  */
 case class BreakpointEvidence(breakpoint: Breakpoint,
                               evidence: EvidenceType,
                               from: Set[SamRecord] = Set.empty,
-                              into: Set[SamRecord] = Set.empty)
+                              into: Set[SamRecord] = Set.empty,
+                              fromIsLeft: Boolean = true)

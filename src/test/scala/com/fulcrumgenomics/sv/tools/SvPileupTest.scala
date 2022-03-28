@@ -446,23 +446,25 @@ class SvPileupTest extends UnitSpec {
       }
     }
 
-    val fromTag = s"0;from;${SplitRead.snakeName}"
-    val intoTag = f"0;into;${SplitRead.snakeName}"
+    val leftFromTag  = s"0;left;from;${SplitRead.snakeName}"
+    val rightFromTag = s"0;right;from;${SplitRead.snakeName}"
+    val leftIntoTag  = f"0;left;into;${SplitRead.snakeName}"
+    val rightIntoTag = f"0;right;into;${SplitRead.snakeName}"
 
     // r1Half2 is not annotated, since it is superseded by r1Half1 -> fullR2
     SamPairUtil.setMateInfo(r1Half1.asSam, fullR2.asSam, true)
     SamPairUtil.setMateInformationOnSupplementalAlignment(r1Half2.asSam, fullR2.asSam, true)
-    test(Seq(r1Half2, r1Half1, fullR2), Seq(fromTag, "", intoTag))
+    test(Seq(r1Half2, r1Half1, fullR2), Seq(leftFromTag, "", rightIntoTag))
 
     // fullR1 does not contain the breakpoint, while r2Half2 -> r2Half1 does (NB: the from->into are on the reverse strand)
     SamPairUtil.setMateInfo(fullR1.asSam, r2Half1.asSam, true)
     SamPairUtil.setMateInformationOnSupplementalAlignment(r2Half2.asSam, fullR1.asSam, true)
-    test(Seq(fullR1, r2Half1, r2Half2), Seq("", intoTag, fromTag))
+    test(Seq(fullR1, r2Half1, r2Half2), Seq("", rightIntoTag, leftFromTag))
 
     // all the reads are annotated!
     SamPairUtil.setMateInfo(r1Half1.asSam, r2Half1.asSam, true)
     SamPairUtil.setMateInformationOnSupplementalAlignment(r2Half2.asSam, r1Half1.asSam, true)
     SamPairUtil.setMateInformationOnSupplementalAlignment(r1Half2.asSam, r2Half1.asSam, true)
-    test(Seq(r1Half1, r1Half2, r2Half1, r2Half2), Seq(fromTag, intoTag, intoTag, fromTag))
+    test(Seq(r1Half1, r1Half2, r2Half1, r2Half2), Seq(leftFromTag, rightIntoTag, rightIntoTag, leftFromTag))
   }
 }
