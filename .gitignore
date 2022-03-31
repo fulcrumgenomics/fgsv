@@ -2,3 +2,5 @@
 .idea_modules
 out
 jars
+project
+target

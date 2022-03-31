@@ -1,7 +1,7 @@
 package com.fulcrumgenomics.sv.tools
 
 import com.fulcrumgenomics.FgBioDef.{FilePath, PathPrefix, PathToBam, SafelyClosable, yieldAndThen}
-import com.fulcrumgenomics.bam.api.{SamRecord, SamSource, SamWriter}
+import com.fulcrumgenomics.bam.api.{SamSource, SamWriter}
 import com.fulcrumgenomics.bam.{Bams, Template}
 import com.fulcrumgenomics.commons.io.PathUtil
 import com.fulcrumgenomics.commons.util.LazyLogging
