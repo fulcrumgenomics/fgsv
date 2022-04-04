@@ -18,58 +18,63 @@ class AlignedSegmentTest extends UnitSpec {
   "AlignedSegment" should "be built from a SamRecord" in {
     implicit val builder: SamBuilder = new SamBuilder()
 
+    def test(rec: SamRecord, expected: AlignedSegment): Unit = {
+      val actual = AlignedSegment(rec)
+      actual shouldBe expected.copy(left=IndexedSeq(rec), right=IndexedSeq(rec))
+    }
+
     // All bases mapped
-    AlignedSegment(readEnd(start=1, cigar="100M")) shouldBe AlignedSegment(
+    test(readEnd(start=1, cigar="100M"), AlignedSegment(
       origin=ReadOne,
       readStart=1, readEnd=100, positiveStrand=true, cigar=Cigar("100M"),
       range=GenomicRange(refIndex=0, start=1, end=100)
-    )
-    AlignedSegment(readEnd(start=1, cigar="100M", firstOfPair=false)) shouldBe AlignedSegment(
+    ))
+    test(readEnd(start=1, cigar="100M", firstOfPair=false), AlignedSegment(
       origin=ReadTwo,
       readStart=1, readEnd=100, positiveStrand=true, cigar=Cigar("100M"),
       range=GenomicRange(refIndex=0, start=1, end=100),
-    )
-    AlignedSegment(readEnd(start=1, cigar="100M", strand=SamBuilder.Minus)) shouldBe AlignedSegment(
+    ))
+    test(readEnd(start=1, cigar="100M", strand=SamBuilder.Minus), AlignedSegment(
       origin=ReadOne,
       readStart=1, readEnd=100, positiveStrand=false, cigar=Cigar("100M"),
       range=GenomicRange(refIndex=0, start=1, end=100)
-    )
+    ))
 
     // Leading soft-clipping
-    AlignedSegment(readEnd(start=11, cigar="10S90M")) shouldBe AlignedSegment(
+    test(readEnd(start=11, cigar="10S90M"), AlignedSegment(
       origin=ReadOne,
       readStart=11, readEnd=100, positiveStrand=true, cigar=Cigar("10S90M"),
       range=GenomicRange(refIndex=0, start=11, end=100)
-    )
-    AlignedSegment(readEnd(start=11, cigar="10S90M", strand=SamBuilder.Minus)) shouldBe AlignedSegment(
+    ))
+    test(readEnd(start=11, cigar="10S90M", strand=SamBuilder.Minus), AlignedSegment(
       origin=ReadOne,
       readStart=1, readEnd=90, positiveStrand=false, cigar=Cigar("10S90M"),
       range=GenomicRange(refIndex=0, start=11, end=100)
-    )
+    ))
 
     // trailing soft-clipping
-    AlignedSegment(readEnd(start=1, cigar="90M10S")) shouldBe AlignedSegment(
+    test(readEnd(start=1, cigar="90M10S"), AlignedSegment(
       origin=ReadOne,
       readStart=1, readEnd=90, positiveStrand=true, cigar=Cigar("90M10S"),
       range=GenomicRange(refIndex=0, start=1, end=90)
-    )
-    AlignedSegment(readEnd(start=1, cigar="90M10S", strand=SamBuilder.Minus)) shouldBe AlignedSegment(
+    ))
+    test(readEnd(start=1, cigar="90M10S", strand=SamBuilder.Minus), AlignedSegment(
       origin=ReadOne,
       readStart=11, readEnd=100, positiveStrand=false, cigar=Cigar("90M10S"),
       range=GenomicRange(refIndex=0, start=1, end=90)
-    )
+    ))
 
     // lots of clipping
-    AlignedSegment(readEnd(start=10, cigar="1H4S90M6S2H")) shouldBe AlignedSegment(
+    test(readEnd(start=10, cigar="1H4S90M6S2H"), AlignedSegment(
       origin=ReadOne,
       readStart=6, readEnd=95, positiveStrand=true, cigar=Cigar("1H4S90M6S2H"),
       range=GenomicRange(refIndex=0, start=10, end=99)
-    )
-    AlignedSegment(readEnd(start=10, cigar="1H4S90M6S2H", strand=SamBuilder.Minus)) shouldBe AlignedSegment(
+    ))
+    test(readEnd(start=10, cigar="1H4S90M6S2H", strand=SamBuilder.Minus), AlignedSegment(
       origin=ReadOne,
       readStart=9, readEnd=98, positiveStrand=false, cigar=Cigar("1H4S90M6S2H"),
       range=GenomicRange(refIndex=0, start=10, end=99)
-    )
+    ))
   }
 
   "AlignedSegment.segmentsFrom" should "create segments from a primary and one supplementals" in {
@@ -116,10 +121,10 @@ class AlignedSegmentTest extends UnitSpec {
   }
 
   "AlignedSegment.mergeReadSegments" should " merge read segments" in {
-    val r1 = GenomicRange(refIndex=0, start=1, end=50) // overlaps nothing
+    val r1 = GenomicRange(refIndex=0, start=1, end=50)    // overlaps nothing
     val r2 = GenomicRange(refIndex=0, start=100, end=150) // overlaps r1
     val r3 = GenomicRange(refIndex=0, start=125, end=175) // overlaps r2
-    val r4 = GenomicRange(refIndex=1, start=1, end=1000) // overlaps nothing
+    val r4 = GenomicRange(refIndex=1, start=1, end=1000)  // overlaps nothing
 
     // No overlaps with one segment on R1 and two on R2
     {
