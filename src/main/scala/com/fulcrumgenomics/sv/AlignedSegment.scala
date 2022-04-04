@@ -32,8 +32,8 @@ case class AlignedSegment(origin: SegmentOrigin,
                           positiveStrand: Boolean,
                           private val cigar: Cigar,
                           range: GenomicRange,
-                          left: Seq[SamRecord] = IndexedSeq.empty,
-                          right: Seq[SamRecord] = IndexedSeq.empty) {
+                          left: Seq[SamRecord] = AlignedSegment.NoReads,
+                          right: Seq[SamRecord] = AlignedSegment.NoReads) {
   require(0 < readStart)
   require(readStart <= readEnd)
 
@@ -81,6 +81,8 @@ case class AlignedSegment(origin: SegmentOrigin,
 object AlignedSegment extends LazyLogging {
   private val NoSegments: IndexedSeq[AlignedSegment] = IndexedSeq.empty
 
+  private val NoReads: IndexedSeq[SamRecord] = IndexedSeq.empty[SamRecord]
+
   /** Builds an alignment segment from a [[SamRecord]]
    *
    * @param rec the mapped record
@@ -103,6 +105,8 @@ object AlignedSegment extends LazyLogging {
       else                    (trailingClipping + 1, trailingClipping + middle)
     }
 
+    val recs = IndexedSeq(rec)
+
     AlignedSegment(
       origin         = SegmentOrigin(rec),
       readStart      = start,
@@ -110,8 +114,8 @@ object AlignedSegment extends LazyLogging {
       positiveStrand = rec.positiveStrand,
       cigar          = rec.cigar,
       range          = range,
-      left           = IndexedSeq(rec),
-      right          = IndexedSeq(rec)
+      left           = recs,
+      right          = recs
     )
   }
 

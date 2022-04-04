@@ -44,6 +44,27 @@ import scala.collection.mutable
     |4. The type of breakpoint evidence: either "split_read" for observations of an aligned segment of a single read
     |   with split alignments, or "read_pair" for observations _between_ reads in a read pair.
     |
+    |## Example output
+    |
+    |The following shows two breakpoints:
+    |
+    |```
+    |id left_contig left_pos left_strand right_contig right_pos right_strand split_reads read_pairs total
+    | 1        chr1      100           +         chr2       200            -           1          0     1
+    | 2        chr2      150           -         chr3       500            +           1          0     1
+    |```
+    |
+    |Consider a single fragment read that maps across both the above two breakpoints, so has three split-read
+    |alignments.  The first alignment maps on the left side of breakpoint #1, the second alignment maps to both the
+    |right side of breakpoint #1 and the left-side of breakpoint #2, and the third alignment maps to the right side of
+    |breakpoint #2. The SAM records would be as follows:
+    |
+    |```
+    |r1    0 chr1  50 60   50M100S ... be:Z:1;left;from;split_read
+    |r1 2064 chr2 150 60 50S50M50S ... be:Z:1;right;into;split_read,2;left;from;split_read
+    |r1 2048 chr3 500 60   100S50M ... be:Z:2;right;into;split_read
+    |```
+    |
     |## Algorithm Overview
     |
     |Putative breakpoints are identified by examining the alignments for each template. The alignments are transformed
