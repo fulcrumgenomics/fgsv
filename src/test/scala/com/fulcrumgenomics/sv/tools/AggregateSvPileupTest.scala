@@ -17,7 +17,7 @@ class AggregateSvPileupTest extends UnitSpec {
   /** Runs `AggregateSvPileup` end-to-end, reads in the output file and returns its contents as a sequence of records */
   private def runEndToEnd(inputRecords: Seq[BreakpointPileup], maxDist: Int = 100): Seq[AggregatedBreakpointPileup] = {
     val inputFile = writeTempBreakpointPileups(inputRecords)
-    val outputFile = makeTempFile("aggregated", "txt")
+    val outputFile = makeTempFile("aggregated", ".txt")
     new AggregateSvPileup(inputFile, outputFile, maxDist).execute()
     Metric.read[AggregatedBreakpointPileup](outputFile)
   }
@@ -143,7 +143,7 @@ class AggregateSvPileupTest extends UnitSpec {
     aggregatedPileups should contain theSameElementsAs Seq(
       AggregatedBreakpointPileup(
         id            = "112",
-        category      = "Possible inter-contig rearrangement",
+        category      = "Inter-contig rearrangement",
         left_contig   = "chr1",
         left_min_pos  = 100,
         left_max_pos  = 100,
@@ -171,8 +171,8 @@ class AggregateSvPileupTest extends UnitSpec {
 
     // pileup_id112_1_100_plus_3_200_plus, pileup_id456_1_200_plus_3_100_plus, pileup_id5_1_300_plus_3_200_plus
     val expAgg1 = AggregatedBreakpointPileup(
-      id            = "112_5_456",
-      category      = "Possible inter-contig rearrangement",
+      id            = "5_112_456",
+      category      = "Inter-contig rearrangement",
       left_contig   = "chr1",
       left_min_pos  = 100,
       left_max_pos  = 300,
@@ -206,7 +206,7 @@ class AggregateSvPileupTest extends UnitSpec {
     // pileup_id3_1_100_plus_3_200_minus does not combine due to different strand
     val expAgg3 = AggregatedBreakpointPileup(
       id            = "3",
-      category      = "Possible inter-contig rearrangement",
+      category      = "Inter-contig rearrangement",
       left_contig   = "chr1",
       left_min_pos  = 100,
       left_max_pos  = 100,
@@ -223,7 +223,7 @@ class AggregateSvPileupTest extends UnitSpec {
     // pileup_id6_1_300_plus_3_401_plus does not combine due to distance
     val expAgg4 = AggregatedBreakpointPileup(
       id            = "6",
-      category      = "Possible inter-contig rearrangement",
+      category      = "Inter-contig rearrangement",
       left_contig   = "chr1",
       left_min_pos  = 300,
       left_max_pos  = 300,
