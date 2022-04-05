@@ -120,24 +120,9 @@ object AggregateSvPileup {
     if (pileupToNeighbors.isEmpty) {
       existingClusters
     } else {
-      extractOneCluster(pileupToNeighbors) match {
-        case (pileupGroup: PileupGroup, remaining: Map[BreakpointPileup, PileupGroup]) =>
-          toClusters(remaining, existingClusters :+ pileupGroup)
-      }
+      val (pileupGroup, remaining) = extractClusterFor(pileupToNeighbors.keys.head, pileupToNeighbors)
+      toClusters(remaining, existingClusters :+ pileupGroup)
     }
-  }
-
-  /**
-   * Extracts a complete cluster from the map of pileups to their neighbor sets, and returns the cluster along with the
-   * reduced map of pileup to neighbor set such that no remaining pileups in the map belong in a cluster with the
-   * returned cluster.
-   * @param pileupToNeighbors Map of pileup to its set of neighbors
-   * @return (1) One complete cluster; (2) Remaining map of pileup to neighbor set, all of which are independent of the
-   *         returned cluster.
-   */
-  private def extractOneCluster(pileupToNeighbors: Map[BreakpointPileup, PileupGroup]):
-  (PileupGroup, Map[BreakpointPileup, PileupGroup]) = {
-    extractClusterFor(pileupToNeighbors.keys.head, pileupToNeighbors)
   }
 
   /**
@@ -156,44 +141,19 @@ object AggregateSvPileup {
   def extractClusterFor(pileup: BreakpointPileup, pileupToNeighbors: Map[BreakpointPileup, PileupGroup],
                         existingCluster: PileupGroup = Seq()): (PileupGroup, Map[BreakpointPileup, PileupGroup]) = {
 
-    // Base case: the existing cluster contains the given pileup, and `pileupToNeighbors` contains no pileups that
-    // belong in the cluster
-    if (existingCluster.contains(pileup) && !pileupToNeighbors.contains(pileup)) {
-      (existingCluster, pileupToNeighbors)
-    } else {
-      // Identify the immediate neighbors of the given pileup
-      val neighbors: PileupGroup = pileupToNeighbors(pileup)
+    // Identify the immediate neighbors of the given pileup, and start a cluster containing them
+    val neighbors: PileupGroup = pileupToNeighbors.getOrElse(pileup, Seq.empty)
+    val currCluster: PileupGroup = neighbors :+ pileup
 
-      // Remove the given pileup and its immediate neighbors from `pileupToNeighbors`
-      val reducedRemainingGroups: Map[BreakpointPileup, PileupGroup] = pileupToNeighbors.removed(pileup)
+    // Remove the given pileup and its immediate neighbors from `pileupToNeighbors`
+    val reducedRemainingGroups: Map[BreakpointPileup, PileupGroup] = pileupToNeighbors.removed(pileup)
 
-      // If there are no remaining neighbor groups after removing this pileup's immediate neighbors, return.
-      if (reducedRemainingGroups.isEmpty) {
-        (neighbors :+ pileup, Map())
-      } else {
-        // Recursively build a cluster consisting of this pileup's immediate neighbors, their immediate neighbors,
-        // and so on. With each iteration of the foldLeft operation, we are keeping track of a tuple consisting of
-        // (1) a growing connected cluster, and (2) a shrinking map of remaining pileups to their neighbor sets.
-        neighbors.foldLeft[(PileupGroup, Map[BreakpointPileup, PileupGroup])]
-          {
-            // For the first iteration, start with the given pileup and its immediate neighbors, and the full map of
-            // remaining neighbor groups
-            (neighbors :+ pileup, reducedRemainingGroups)
-          }
-          {
-            // Update the cluster and remaining groups when we see the next neighbor
-            (currClusterAndRemaining: (PileupGroup, Map[BreakpointPileup, PileupGroup]), nextNeighbor: BreakpointPileup) => {
-              currClusterAndRemaining match {
-                case (currCluster, remaining) =>
-                  // Recursively extract the cluster for the next neighbor, add its constituents to the growing cluster,
-                  // and replace the remaining neighbor groups with the reduced set returned from the recursive call.
-                  extractClusterFor(nextNeighbor, remaining, currCluster) match {
-                    case (expandedCluster, reducedRemaining) => ((currCluster ++ expandedCluster).distinct, reducedRemaining)
-                  }
-              }
-            }
-          }
-      }
+    // Recursively build a cluster consisting of this pileup's immediate neighbors, their immediate neighbors,
+    // and so on. With each iteration of the foldLeft operation, we are keeping track of a tuple consisting of
+    // (1) a growing connected cluster, and (2) a shrinking map of remaining pileups to their neighbor sets.
+    neighbors.foldLeft((currCluster, reducedRemainingGroups)) { case ((currCluster, remaining), nextNeighbor) =>
+      val (expandedCluster, reducedRemaining) = extractClusterFor(nextNeighbor, remaining, currCluster)
+      ((currCluster ++ expandedCluster).distinct, reducedRemaining)
     }
   }
 }
@@ -316,6 +276,6 @@ object AggregatedBreakpointPileup {
     }
   }
 
-  private def addId(existing: String, add: String): String = f"${existing}_${add}"
+  private def addId(existing: String, add: String): String = f"${existing}_$add"
 
 }
