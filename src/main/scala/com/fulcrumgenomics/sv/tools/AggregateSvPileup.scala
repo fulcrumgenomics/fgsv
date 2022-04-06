@@ -5,7 +5,6 @@ import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.sv.BreakpointPileup
 import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
 import com.fulcrumgenomics.sv.tools.AggregateSvPileup.PileupGroup
-import com.fulcrumgenomics.sv.tools.AggregatedBreakpointPileup.addId
 import com.fulcrumgenomics.sv.tools.BreakpointCategory.BreakpointCategory
 import com.fulcrumgenomics.util.{Io, Metric}
 
@@ -57,11 +56,8 @@ class AggregateSvPileup
       // Within each contig+strand group, recursively build (transitive) clusters of neighboring pileups
       val pileupClusters: Seq[PileupGroup] = AggregateSvPileup.toClusters(pileupToNeighbors)
 
-      // Aggregate each cluster
-      val aggregatedPileups: Seq[AggregatedBreakpointPileup] = pileupClusters.map(AggregatedBreakpointPileup.apply)
-
-      // Write to output file
-      aggregatedPileups.foreach(writer.write)
+      // Aggregate each cluster and write
+      pileupClusters.map(AggregatedBreakpointPileup.apply).foreach(writer.write)
     }
 
     writer.close()
@@ -90,8 +86,8 @@ object AggregateSvPileup {
     val map: mutable.Map[BreakpointPileup, List[BreakpointPileup]] = mutable.Map.from(pileups.map((_, Nil)))
     for (pileup1 <- pileups; pileup2 <- pileups) {
       if (pileup1.total >= pileup2.total && isCluster(pileup1, pileup2, maxDist)) {
-        map.put(pileup1, pileup2 :: map(pileup1))
-        map.put(pileup2, pileup1 :: map(pileup2))
+        map.put(pileup1, (pileup2 :: map(pileup1)).distinct)
+        map.put(pileup2, (pileup1 :: map(pileup2)).distinct)
       }
     }
     map.toMap
@@ -117,11 +113,11 @@ object AggregateSvPileup {
   @tailrec
   def toClusters(pileupToNeighbors: Map[BreakpointPileup, PileupGroup],
                  existingClusters: Seq[PileupGroup] = Seq()): Seq[PileupGroup] = {
-    if (pileupToNeighbors.isEmpty) {
-      existingClusters
-    } else {
-      val (pileupGroup, remaining) = extractClusterFor(pileupToNeighbors.keys.head, pileupToNeighbors)
-      toClusters(remaining, existingClusters :+ pileupGroup)
+    pileupToNeighbors.headOption match {
+      case None              => existingClusters
+      case Some((pileup, _)) =>
+        val (pileupGroup, remaining) = extractClusterFor(pileup, pileupToNeighbors)
+        toClusters(remaining, existingClusters :+ pileupGroup)
     }
   }
 
@@ -134,25 +130,24 @@ object AggregateSvPileup {
    *
    * @param pileup The pileup representative of the cluster that will be returned
    * @param pileupToNeighbors Map of pileup to its set of neighbors
-   * @param existingCluster An existing cluster to add to
    * @return (1) The complete cluster for the given pileup; (2) Reduced version of `pileupToNeighbors` with all pileups
    *         in the returned cluster having been removed from both keys and values.
    */
-  def extractClusterFor(pileup: BreakpointPileup, pileupToNeighbors: Map[BreakpointPileup, PileupGroup],
-                        existingCluster: PileupGroup = Seq()): (PileupGroup, Map[BreakpointPileup, PileupGroup]) = {
+  def extractClusterFor(pileup: BreakpointPileup, pileupToNeighbors: Map[BreakpointPileup, PileupGroup]):
+  (PileupGroup, Map[BreakpointPileup, PileupGroup]) = {
 
     // Identify the immediate neighbors of the given pileup, and start a cluster containing them
     val neighbors: PileupGroup = pileupToNeighbors.getOrElse(pileup, Seq.empty)
     val currCluster: PileupGroup = neighbors :+ pileup
 
-    // Remove the given pileup and its immediate neighbors from `pileupToNeighbors`
+    // Remove the given pileup from `pileupToNeighbors`
     val reducedRemainingGroups: Map[BreakpointPileup, PileupGroup] = pileupToNeighbors.removed(pileup)
 
     // Recursively build a cluster consisting of this pileup's immediate neighbors, their immediate neighbors,
     // and so on. With each iteration of the foldLeft operation, we are keeping track of a tuple consisting of
     // (1) a growing connected cluster, and (2) a shrinking map of remaining pileups to their neighbor sets.
     neighbors.foldLeft((currCluster, reducedRemainingGroups)) { case ((currCluster, remaining), nextNeighbor) =>
-      val (expandedCluster, reducedRemaining) = extractClusterFor(nextNeighbor, remaining, currCluster)
+      val (expandedCluster, reducedRemaining) = extractClusterFor(nextNeighbor, remaining)
       ((currCluster ++ expandedCluster).distinct, reducedRemaining)
     }
   }
@@ -232,7 +227,7 @@ case class AggregatedBreakpointPileup(id: String,
     assert(pileup.left_strand == left_strand)
     assert(pileup.right_strand == right_strand)
     AggregatedBreakpointPileup(
-      id              = addId(id, pileup.id),
+      id              = f"${id}_${pileup.id}",
       category        = category,
       left_contig     = left_contig,
       left_min_pos    = Math.min(left_min_pos, pileup.left_pos),
@@ -275,7 +270,5 @@ object AggregatedBreakpointPileup {
       case _ => throw new IllegalArgumentException("Pileup group must be non-empty")
     }
   }
-
-  private def addId(existing: String, add: String): String = f"${existing}_$add"
 
 }

@@ -87,6 +87,45 @@ class AggregateSvPileupTest extends UnitSpec {
     total        = 20,
   )
 
+  private val pileup_id7_1_400_plus_3_300_plus = BreakpointPileup(
+    id           = "7",
+    left_contig  = "chr1",
+    left_pos     = 400,
+    left_strand  = '+',
+    right_contig = "chr3",
+    right_pos    = 300,
+    right_strand = '+',
+    split_reads  = 10,
+    read_pairs   = 10,
+    total        = 20,
+  )
+
+  private val pileup_id8_1_500_plus_3_400_plus = BreakpointPileup(
+    id           = "8",
+    left_contig  = "chr1",
+    left_pos     = 500,
+    left_strand  = '+',
+    right_contig = "chr3",
+    right_pos    = 400,
+    right_strand = '+',
+    split_reads  = 10,
+    read_pairs   = 10,
+    total        = 20,
+  )
+
+  private val pileup_id9_1_600_plus_3_500_plus = BreakpointPileup(
+    id           = "9",
+    left_contig  = "chr1",
+    left_pos     = 600,
+    left_strand  = '+',
+    right_contig = "chr3",
+    right_pos    = 500,
+    right_strand = '+',
+    split_reads  = 10,
+    read_pairs   = 10,
+    total        = 20,
+  )
+
   private val pileup_id6_1_300_plus_3_401_plus = BreakpointPileup(
     id           = "6",
     left_contig  = "chr1",
@@ -166,24 +205,26 @@ class AggregateSvPileupTest extends UnitSpec {
       pileup_id3_1_100_plus_3_200_minus,
       pileup_id456_1_200_plus_3_100_plus,
       pileup_id5_1_300_plus_3_200_plus,
+      pileup_id7_1_400_plus_3_300_plus,
+      pileup_id8_1_500_plus_3_400_plus,
+      pileup_id9_1_600_plus_3_500_plus,
       pileup_id6_1_300_plus_3_401_plus,
     )
 
-    // pileup_id112_1_100_plus_3_200_plus, pileup_id456_1_200_plus_3_100_plus, pileup_id5_1_300_plus_3_200_plus
     val expAgg1 = AggregatedBreakpointPileup(
-      id            = "5_112_456",
+      id            = "9_7_8_5_456_112",
       category      = "Inter-contig rearrangement",
       left_contig   = "chr1",
       left_min_pos  = 100,
-      left_max_pos  = 300,
+      left_max_pos  = 600,
       left_strand   = '+',
       right_contig  = "chr3",
       right_min_pos = 100,
-      right_max_pos = 200,
+      right_max_pos = 500,
       right_strand  = '+',
-      split_reads   = 30,
-      read_pairs    = 30,
-      total         = 60,
+      split_reads   = 60,
+      read_pairs    = 60,
+      total         = 120,
     )
 
     // pileup_id222_1_100_plus_1_200_plus does not combine due to different chromosome
