@@ -49,6 +49,12 @@ class AggregateSvPileup
  @arg(flag='b', doc="Optional bam file for allele frequency analysis") bam: Option[PathToBam] = None,
  @arg(flag='f', doc="If bam file is provided: distance upstream and downstream of aggregated breakpoint regions to " +
    "search for mapped templates that read across breakends") flank: Int = 200,
+ @arg(doc="If bam file is provided: minimum total number of templates supporting an aggregated breakpoint to report " +
+   "allele frequency. Supports speed improvement by avoiding querying and iterating over huge read pileups that " +
+   "contain insufficient support for a breakpoint to be considered interesting.") minTotal: Int = 10,
+ @arg(doc="If bam file is provided: minimum allele frequency to report. Supports speed improvement by " +
+   "avoiding iterating over huge read pileups that contain insufficient support for a breakpoint to be considered " +
+   "interesting.") minFrequency: Double = 0.001,
  @arg(flag='t', doc="Optional bed file of target regions") targetsBed: Option[FilePath] = None,
  @arg(flag='o', doc="Output file") output: FilePath,
  @arg(flag='d', doc="Distance threshold below which to cluster breakpoints") maxDist: Int = 10,
@@ -105,7 +111,7 @@ class AggregateSvPileup
       // Aggregate each cluster, analyze allele frequency and target overlap, and write
       pileupClusters
         .map(AggregatedBreakpointPileup.apply)
-        .map(_.calculateFrequency(samSource, flank))
+        .map(_.calculateFrequency(samSource, flank, minTotal, minFrequency))
         .map(_.addTargetOverlap(targets))
         .foreach(writer.write)
     }
@@ -284,7 +290,9 @@ case class AggregatedBreakpointPileup(id: String,
                                       right_frequency: Option[Double] = None,
                                       left_overlaps_target: Boolean = false,
                                       right_overlaps_target: Boolean = false,
-                                     ) extends Metric {
+                                     ) extends Metric with LazyLogging {
+
+  def pileupIds(): Seq[String] = id.split("_").toSeq.sorted
 
   /** Returns a new aggregated pileup with the given pileup added */
   def add(pileup: BreakpointPileup): AggregatedBreakpointPileup = {
@@ -293,7 +301,7 @@ case class AggregatedBreakpointPileup(id: String,
     assert(pileup.left_strand == left_strand)
     assert(pileup.right_strand == right_strand)
     AggregatedBreakpointPileup(
-      id              = f"${id}_${pileup.id}",
+      id              = pileupIds().appended(pileup.id).sorted.mkString("_"),
       category        = category,
       left_contig     = left_contig,
       left_min_pos    = Math.min(left_min_pos, pileup.left_pos),
@@ -316,51 +324,88 @@ case class AggregatedBreakpointPileup(id: String,
    * @param source Optional BAM reader; frequencies are set to None if not provided
    * @param flank Distance upstream and downstream of this aggregated pileup region to query for templates that read
    *              across breakends
+   * @param minTotal Minimum total number of templates supporting the aggregated breakpoint in order to calculate
+   *                 frequency. Used to speed up execution when the number of supporting templates is too low to be
+   *                 interesting.
+   * @param minFrequency Minimum proportion of templates overlapping a breakend that support the breakpoint. Used to
+   *                     stop iteration over huge sets of overlapping templates when the number of templates supporting
+   *                     the breakpoint is insufficient to be interesting. When the number of overlapping templates
+   *                     causes (total_supporting_breakpoint / total_overlappers) to drop below this frequency, None is
+   *                     returned.
    */
-  def calculateFrequency(source: Option[SamSource], flank: Int): AggregatedBreakpointPileup = {
-    val (left_freq, right_freq) = source match {
-      case None => (None, None)
+  def calculateFrequency(source: Option[SamSource], flank: Int, minTotal: Int, minFrequency: Double):
+  AggregatedBreakpointPileup = {
+
+    def frequency(contig: String, pileups: PositionList, minPos: Int, maxPos: Int): Option[Double] = source match {
+      case None => None
       case Some(src) =>
-        val numOverlapLeft = numOverlappingTemplates(
-          src, left_contig, left_pileups, left_min_pos - flank, left_max_pos + flank)
-        val numOverlapRight = numOverlappingTemplates(
-          src, right_contig, right_pileups, right_min_pos - flank, right_max_pos + flank)
-        (Some(total.toDouble / numOverlapLeft), Some(total.toDouble / numOverlapRight))
+        val numOverlap = numOverlappingTemplates(
+          src, contig, pileups, minPos - flank, maxPos + flank, minTotal, minFrequency)
+        numOverlap match {
+          case None => None
+          case Some(n) => Some(total.toDouble / n)
+        }
     }
-    this.copy(left_frequency = left_freq, right_frequency = right_freq)
+
+    this.copy(
+      left_frequency = frequency(left_contig, left_pileups, left_min_pos, left_max_pos),
+      right_frequency = frequency(right_contig, right_pileups, right_min_pos, right_max_pos),
+    )
   }
 
   /**
-   * Returns the number of templates that read across any breakend in the list.
+   * Returns the number of templates that overlap any breakend in the list. Returns None if there are insufficient
+   * templates supporting the breakpoint, or if the proportion of those templates that support the breakpoint is less
+   * than the minimum frequency.
    * @param source BAM reader
    * @param contig Contig name
    * @param breakends Breakend positions with coordinates defined as in `SvPileup` (1-based)
    * @param queryMin Minimum coordinate to query for overlapping templates (1-based)
    * @param queryMax Maximum coordinate to query for overlapping templates (1-based)
-   * @return The size of the union of templates that read across any breakend
+   * @param minTotal Minimum total number of templates supporting the aggregated breakpoint. Used to speed up
+   *                 execution when the number of supporting templates is too low to be interesting.
+   * @param minFrequency Minimum proportion of templates overlapping a breakend that support the breakpoint. Used to
+   *                     stop iteration over huge sets of overlapping templates when the number of templates supporting
+   *                     the breakpoint is insufficient to be interesting. When the number of overlapping templates
+   *                     causes (total_supporting_breakpoint / total_overlappers) to drop below this frequency, None is
+   *                     returned.
+   * @return The size of the union of templates that overlap any breakend
    */
   private def numOverlappingTemplates(source: SamSource, contig: String, breakends: PositionList, queryMin: Int,
-                                      queryMax: Int): Int = {
+                                      queryMax: Int, minTotal: Int, minFrequency: Double): Option[Int] = {
 
-    // Whether to consider a template. For paired reads, only consider proper pairs, and only count each pair once.
-    def checkPair(rec: SamRecord): Boolean = {
+    // Whether to consider a paired template with both reads on the same contig
+    def checkPairSameContig(rec: SamRecord): Boolean = {
       rec.paired &&
-        rec.properlyPaired ||
-        // SamRecord.properlyPaired doesn't work for test records built with SamBuilder
-        rec.refName == rec.mateRefName &&
+        (rec.refName == rec.mateRefName &&
         rec.firstOfPair &&
         ((rec.start <= rec.mateStart && rec.positiveStrand && rec.mateNegativeStrand)
-          || (rec.start >= rec.mateStart && rec.negativeStrand && rec.matePositiveStrand))
+          || (rec.start >= rec.mateStart && rec.negativeStrand && rec.matePositiveStrand)))
     }
 
-    source.query(contig, queryMin, queryMax, QueryType.Overlapping).count(rec => {
-      if (checkPair(rec)) {
-        breakends.positions.exists(
-          pos => pos >= Math.min(rec.start, rec.mateStart) && pos < Math.max(rec.end, rec.mateEnd.get))
-      } else if (rec.unpaired) {
-        breakends.positions.exists(pos => pos >= rec.start && pos < rec.end)
-      } else false
-    })
+    if (total < minTotal) return None
+
+    var numOverlappers = 0
+    val maxOverlappers = total.toDouble / minFrequency
+
+    val samIter = source.query(contig, queryMin, queryMax, QueryType.Overlapping)
+    while (samIter.hasNext) {
+      if (numOverlappers > maxOverlappers) {
+        samIter.close()
+        return None
+      }
+      val rec = samIter.next()
+      if (checkPairSameContig(rec) && breakends.positions.exists(
+        pos => pos >= Math.min(rec.start, rec.mateStart) && pos <= Math.max(rec.end, rec.mateEnd.get))) {
+        numOverlappers += 1
+      } else {
+        val considerSingleRead = (rec.paired && rec.refName != rec.mateRefName) || rec.unpaired
+        if (considerSingleRead && breakends.positions.exists(pos => pos >= rec.start && pos <= rec.end)) {
+          numOverlappers += 1
+        }
+      }
+    }
+    Some(numOverlappers)
   }
 
   /**
@@ -431,7 +476,7 @@ class PositionList(val positions: Seq[Int]) {
 
   override def toString(): String = positions.mkString(",")
 
-  def appended(pos: Int): PositionList = new PositionList(positions :+ pos)
+  def appended(pos: Int): PositionList = new PositionList(positions.appended(pos).sorted)
 }
 
 object PositionList {

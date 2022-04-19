@@ -28,8 +28,16 @@ class AggregateSvPileupTest extends UnitSpec {
                            maxDist: Int = 100): Seq[AggregatedBreakpointPileup] = {
     val inputFile = writeTempBreakpointPileups(inputRecords)
     val outputFile = makeTempFile("aggregated", ".txt")
-    new AggregateSvPileup(inputFile, bam = bam, flank = flank, targetsBed = targets, output = outputFile,
-      maxDist = maxDist).execute()
+    new AggregateSvPileup(
+      inputFile,
+      bam = bam,
+      minTotal = 0,
+      minFrequency = 0,
+      flank = flank,
+      targetsBed = targets,
+      output = outputFile,
+      maxDist = maxDist,
+    ).execute()
     Metric.read[AggregatedBreakpointPileup](outputFile)
   }
 
@@ -281,7 +289,7 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val expAgg1 = AggregatedBreakpointPileup(
-      id             = "7_456_5_8_9_112",
+      id             = "112_456_5_7_8_9",
       category       = "Inter-contig rearrangement",
       left_contig    = "chr1",
       left_min_pos   = 100,
@@ -294,8 +302,8 @@ class AggregateSvPileupTest extends UnitSpec {
       split_reads    = 6,
       read_pairs     = 6,
       total          = 12,
-      left_pileups   = PositionList(400, 200, 300, 500, 600, 100),
-      right_pileups  = PositionList(300, 100, 200, 400, 500, 200),
+      left_pileups   = PositionList(100, 200, 300, 400, 500, 600),
+      right_pileups  = PositionList(100, 200, 200, 300, 400, 500),
     )
 
     // pileup_id222_1_100_plus_1_200_plus does not combine due to different chromosome
@@ -370,7 +378,7 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val expAgg1 = AggregatedBreakpointPileup(
-      id             = "8_7_10_9",
+      id             = "10_7_8_9",
       category       = "Inter-contig rearrangement",
       left_contig    = "chr1",
       left_min_pos   = 400,
@@ -383,8 +391,8 @@ class AggregateSvPileupTest extends UnitSpec {
       split_reads    = 4,
       read_pairs     = 4,
       total          = 8,
-      left_pileups   = PositionList(500, 400, 525, 600),
-      right_pileups  = PositionList(400, 300, 425, 500),
+      left_pileups   = PositionList(400, 500, 525, 600),
+      right_pileups  = PositionList(300, 400, 425, 500),
       left_frequency = Some(0.5),
       right_frequency = Some(1),
       left_overlaps_target = true,
@@ -428,7 +436,7 @@ class AggregateSvPileupTest extends UnitSpec {
 
 
     val expAgg = AggregatedBreakpointPileup(
-      id             = "9_8_10_7",
+      id             = "10_7_8_9",
       category       = "Inter-contig rearrangement",
       left_contig    = "chr1",
       left_min_pos   = 400,
@@ -441,8 +449,8 @@ class AggregateSvPileupTest extends UnitSpec {
       split_reads    = 4,
       read_pairs     = 4,
       total          = 8,
-      left_pileups   = PositionList(600, 500, 525, 400),
-      right_pileups  = PositionList(500, 400, 425, 300),
+      left_pileups   = PositionList(400, 500, 525, 600),
+      right_pileups  = PositionList(300, 400, 425, 500),
       left_frequency = Some(0.5),
       right_frequency = Some(1),
     )
@@ -461,7 +469,7 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val expAgg = AggregatedBreakpointPileup(
-      id             = "9_8_10_7",
+      id             = "10_7_8_9",
       category       = "Inter-contig rearrangement",
       left_contig    = "chr1",
       left_min_pos   = 400,
@@ -474,8 +482,8 @@ class AggregateSvPileupTest extends UnitSpec {
       split_reads    = 4,
       read_pairs     = 4,
       total          = 8,
-      left_pileups   = PositionList(600, 500, 525, 400),
-      right_pileups  = PositionList(500, 400, 425, 300),
+      left_pileups   = PositionList(400, 500, 525, 600),
+      right_pileups  = PositionList(300, 400, 425, 500),
       left_frequency = None,
       right_frequency = None,
       left_overlaps_target = true,
