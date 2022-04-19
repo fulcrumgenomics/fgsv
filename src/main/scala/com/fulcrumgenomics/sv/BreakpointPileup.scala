@@ -34,9 +34,9 @@ case class BreakpointPileup(id: String,
                             total: Int
                            ) extends Metric {
 
-  override def toString(): String = f"${id}|${left_contig}:${left_pos}(${left_strand})/" +
-    f"${right_contig}:${right_pos}(${right_strand})|" +
-    f"${split_reads},${read_pairs},${total}"
+  override def toString(): String = f"$id|$left_contig:$left_pos($left_strand)/" +
+    f"$right_contig:$right_pos($right_strand)|" +
+    f"$split_reads,$read_pairs,$total"
 
 }
 
