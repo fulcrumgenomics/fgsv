@@ -21,12 +21,68 @@ import scala.collection.mutable
   """
     |Collates a pileup of putative structural variant supporting reads.
     |
+    |## Outputs
+    |
     |Two output files will be created:
     |
-    |1. `<output-prefix>.txt`: a tab-delimited file describing SV pileups, one line per breakpiont event.
+    |1. `<output-prefix>.txt`: a tab-delimited file describing SV pileups, one line per breakpoint event.  The returned
+    |   breakpoint will be canonicalized such that the "left" side of the breakpoint will have the lower (or equal to)
+    |   position on the genome vs. the "right"s side.
     |2. `<output-prefix>.bam`: a SAM/BAM file containing reads that contain SV breakpoint evidence annotated with SAM
-    |  tags.  The `ev` SAM tag lists the type of evidence found, while the `be` list the unique breakpoint identifier
-    |  output in (1) above.
+    |  tag.
+    |
+    |The `be` SAM tag contains a comma-delimited list of breakpoints to which a given read belongs.  Each element is
+    |a semi-colon delimited, with four fields:
+    |
+    |1. The unique breakpoint identifier (same identifier found in the tab-delimited output).
+    |2. Either "left" or "right, corresponding to if the read shows evidence of the genomic left or right side of the
+    |   breakpoint as found in the breakpoint file (i.e. `left_pos` or `right_pos`).
+    |3. Either "from" or "into", such that when traversing the breakpoint would read through "from" and then into
+    |   "into" in the sequencing order of the read pair.  For a split-read alignment, the "from" contains the aligned
+    |   portion of the read that comes from earlier in the read in sequencing order.  For an alignment of a read-pair
+    |   spanning the breakpoint, then "from" should be read-one of the pair and "into" should be read-two of the pair.
+    |4. The type of breakpoint evidence: either "split_read" for observations of an aligned segment of a single read
+    |   with split alignments, or "read_pair" for observations _between_ reads in a read pair.
+    |
+    |## Example output
+    |
+    |The following shows two breakpoints:
+    |
+    |```
+    |id left_contig left_pos left_strand right_contig right_pos right_strand split_reads read_pairs total
+    | 1        chr1      100           +         chr2       200            -           1          0     1
+    | 2        chr2      150           -         chr3       500            +           1          0     1
+    |```
+    |
+    |Consider a single fragment read that maps across both the above two breakpoints, so has three split-read
+    |alignments.  The first alignment maps on the left side of breakpoint #1, the second alignment maps to both the
+    |right side of breakpoint #1 and the left-side of breakpoint #2, and the third alignment maps to the right side of
+    |breakpoint #2. The SAM records would be as follows:
+    |
+    |```
+    |r1    0 chr1  50 60   50M100S ... be:Z:1;left;from;split_read
+    |r1 2064 chr2 150 60 50S50M50S ... be:Z:1;right;into;split_read,2;left;from;split_read
+    |r1 2048 chr3 500 60   100S50M ... be:Z:2;right;into;split_read
+    |```
+    |
+    |## Algorithm Overview
+    |
+    |Putative breakpoints are identified by examining the alignments for each template. The alignments are transformed
+    |into aligned segments in the order they were sequenced.  Each aligned segment represents the full genomic span of
+    |the mapped bases.  This is performed first for the primary alignments.  Next, supplementary alignments are added
+    |only if they map read bases that have not been previously covered by other alignments (see
+    |`--min-unique-bases-to-add`).  This is iteratively performed until supplementary alignments have been exhausted.
+    |
+    |Next, aligned segments that have overlapping genomic mapped bases are merged into a single aligned
+    |segment.  In this case, the two or more read mappings merged are associated with either the left side or right
+    |side of that aligned segment, controlled by examining how close to the end of the new aligned segment the given
+    |read mapping occurs (see `--slop` option).  This used to identify which reads traverse "from" and "into" the
+    |breakpoint as described above.
+    |
+    |Finally, pairs of adjacent aligned segments are examined for evidence of a breakpoint, such that genomic distance
+    |between them beyond either `--max-read-pair-inner-distance` for aligned segments from different read pairs, or
+    |`--max-aligned-segment-inner-distance` for aligned segments from the same read in a pair (i.e. split-read mapping).
+    |Split read evidence will be returned in favor of across-read-pair evidence when both are present.
   """)
 class SvPileup
 (@arg(flag='i', doc="The input query sorted or grouped BAM") input: PathToBam,
@@ -36,6 +92,9 @@ class SvPileup
  @arg(flag='q', doc="The minimum mapping quality for primary alignments") minPrimaryMappingQuality: Int = 30,
  @arg(flag='Q', doc="The minimum mapping quality for supplementary alignments") minSupplementaryMappingQuality: Int = 18,
  @arg(flag='b', doc="The minimum # of uncovered query bases needed to add a supplemental alignment") minUniqueBasesToAdd: Int = 20,
+ @arg(flag='s', doc="""
+   |The number of bases of slop to allow when determining which records to track for the left or right
+   |side of an aligned segment when merging segments.""") slop: Int = 5
 ) extends SvTool {
 
   import SvPileup._
@@ -51,7 +110,7 @@ class SvPileup
       h.setGroupOrder(GroupOrder.query)
       h
     }
-    val bamOut    = SamWriter(PathUtil.pathTo(s"${output}.bam"), header=outHeader)
+    val bamOut    = SamWriter(PathUtil.pathTo(s"$output.bam"), header=outHeader)
     val progress  = new ProgressLogger(logger, noun="templates")
     val tracker   = new BreakpointTracker()
 
@@ -61,10 +120,11 @@ class SvPileup
       .foreach { template =>
         // Find the breakpoints
         val evidences = findBreakpoints(
-          template                       = template,
-          maxWithinReadDistance          = maxAlignedSegmentInnerDistance,
-          maxReadPairInnerDistance       = maxReadPairInnerDistance,
-          minUniqueBasesToAdd            = minUniqueBasesToAdd,
+          template                 = template,
+          maxWithinReadDistance    = maxAlignedSegmentInnerDistance,
+          maxReadPairInnerDistance = maxReadPairInnerDistance,
+          minUniqueBasesToAdd      = minUniqueBasesToAdd,
+          slop                     = slop
         )
 
         // Update the tracker
@@ -79,7 +139,7 @@ class SvPileup
     bamOut.close()
 
     // Write the results
-    writeBreakpoints(path=PathUtil.pathTo(s"${output}.txt"), tracker=tracker, dict=source.dict)
+    writeBreakpoints(path=PathUtil.pathTo(s"$output.txt"), tracker=tracker, dict=source.dict)
   }
 
   /** Annotates the reads for the given template and writes them to the writer if provided.
@@ -89,11 +149,21 @@ class SvPileup
                                  tracker: BreakpointTracker,
                                  writer: SamWriter): Unit = {
     if (evidences.nonEmpty) {
-      val bps = evidences.map(e => tracker(e.breakpoint).id).toSet.toSeq.sorted.mkString(",")
-      val evs = evidences.map(_.evidence.snakeName).mkString(",")
       template.allReads.foreach { rec =>
-        rec(SamBreakpointTag) = bps
-        rec(SamEvidenceTag)   = evs
+        val builder = IndexedSeq.newBuilder[String]
+        evidences.foreach { ev =>
+          val id = tracker(ev.breakpoint).id
+          if (ev.from.contains(rec)) {
+            val leftOrRight = if (ev.fromIsLeft) "left" else "right"
+            builder.addOne(f"$id;$leftOrRight;from;${ev.evidence.snakeName}")
+          }
+          if (ev.into.contains(rec)) {
+            val leftOrRight = if (ev.fromIsLeft) "right" else "left"
+            builder.addOne(f"$id;$leftOrRight;into;${ev.evidence.snakeName}")
+          }
+        }
+        val values = builder.result()
+        if (values.nonEmpty) rec(SamBreakpointTag) = values.mkString(",")
         writer += rec
       }
     }
@@ -129,7 +199,6 @@ class SvPileup
 }
 
 object SvPileup extends LazyLogging {
-  val SamEvidenceTag: String = "ev"
   val SamBreakpointTag: String = "be"
 
   type BreakpointId = Long
@@ -173,7 +242,7 @@ object SvPileup extends LazyLogging {
   }
 
   /**
-   * Performs filtering on a Template to remove primary records that are unmapped and then remove
+   * Performs filtering on a [[Template]] to remove primary records that are unmapped and then remove
    * supplementary records if there is no matching primary record retained.  If neither primary
    * record is retained, returns None, else returns Some(Template).
    */
@@ -201,13 +270,16 @@ object SvPileup extends LazyLogging {
    * @param maxReadPairInnerDistance the maximum inner distance between R1 and R2 before calling a breakpoint
    * @param minUniqueBasesToAdd the minimum newly covered bases to keep a supplementary alignment when iteratively
    *                            adding them.
+   * @param slop                the number of bases of slop to allow when determining which records to track for the
+   *                            left or right side of an aligned segment when merging segments
    */
   def findBreakpoints(template: Template,
                       maxWithinReadDistance: Int,
                       maxReadPairInnerDistance: Int,
                       minUniqueBasesToAdd: Int,
+                      slop: Int = 0
                      ): IndexedSeq[BreakpointEvidence] = {
-    val segments = AlignedSegment.segmentsFrom(template, minUniqueBasesToAdd=minUniqueBasesToAdd)
+    val segments = AlignedSegment.segmentsFrom(template, minUniqueBasesToAdd=minUniqueBasesToAdd, slop=slop)
 
     segments.length match {
       case 0 | 1 =>
@@ -231,9 +303,8 @@ object SvPileup extends LazyLogging {
     if (isInterContigBreakpoint(seg1, seg2) ||
         isIntraContigBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance)
     ) {
-      val bp = Breakpoint(seg1, seg2)
       val ev = if (seg1.origin.isInterRead(seg2.origin)) EvidenceType.ReadPair else EvidenceType.SplitRead
-      Some(BreakpointEvidence(bp, ev))
+      Some(BreakpointEvidence(from=seg1, into=seg2, evidence=ev))
     }
     else {
       None

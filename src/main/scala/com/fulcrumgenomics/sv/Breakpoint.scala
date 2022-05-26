@@ -11,10 +11,12 @@ object Breakpoint {
    * segments could be from different reads in a mate pair, this cannot be validated/required()
    * in this method, but violating this assumption will lead to invalid breakpoints.
    *
-   * The returned breakpoint will be canonicalized such that the `left` side of the breakpoint will have the
-   * lower (or equal to) position on the genome vs. the `right` side.
+   * @param into the segment earlier in sequencing order
+   * @param from the segment later in sequencing order
+   * @param canonicalize canonicalize the breakpoint such that the `left` side of the breakpoint will have the lower
+   *                     (or equal to) position on the genome vs. the `right` side.
    */
-  def apply(from: AlignedSegment, into: AlignedSegment): Breakpoint = {
+  def apply(from: AlignedSegment, into: AlignedSegment, canonicalize: Boolean = true): Breakpoint = {
     val bp = Breakpoint(
       leftRefIndex  = from.range.refIndex,
       leftPos       = if (from.positiveStrand) from.range.end else from.range.start,
@@ -24,7 +26,7 @@ object Breakpoint {
       rightPositive = into.positiveStrand
     )
 
-    if (bp.isCanonical) bp else bp.reversed
+    if (!canonicalize || bp.isCanonical) bp else bp.reversed
   }
 
   /**
@@ -90,7 +92,7 @@ case class Breakpoint(leftRefIndex: Int,
     rightPositive = !leftPositive
   )
 
-  /** Returns true if the representation of the breakend is canonical, with the left hand side of the break
+  /** Returns true if the representation of the breakpoint is canonical, with the left hand side of the break
    * earlier on the genome than the right hand side. */
   def isCanonical: Boolean = (leftRefIndex < rightRefIndex) ||
     (leftRefIndex == rightRefIndex && leftPos < rightPos) ||

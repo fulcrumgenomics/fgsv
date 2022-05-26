@@ -1,5 +1,7 @@
 package com.fulcrumgenomics.sv
 
+import com.fulcrumgenomics.bam.api.SamRecord
+
 object BreakpointEvidence {
   /**
    * Builds a breakpoint evidence from two aligned segments and an evidence type.
@@ -17,7 +19,15 @@ object BreakpointEvidence {
   def apply(from: AlignedSegment,
             into: AlignedSegment,
             evidence: EvidenceType): BreakpointEvidence = {
-    new BreakpointEvidence(breakpoint = Breakpoint(from, into), evidence = evidence)
+    val breakpoint = Breakpoint(from, into, canonicalize=false)
+    val isCanonical = breakpoint.isCanonical
+    new BreakpointEvidence(
+      breakpoint = if (isCanonical) breakpoint else breakpoint.reversed,
+      evidence   = evidence,
+      from       = (if (from.positiveStrand) from.right else from.left).toSet,
+      into       = (if (into.positiveStrand) into.left else into.right).toSet,
+      fromIsLeft = isCanonical,
+    )
   }
 }
 
@@ -26,13 +36,12 @@ object BreakpointEvidence {
  *
  * @param breakpoint the breakpoint for which we have evidence
  * @param evidence the type of evidence for this breakpoint
+ * @param from the [[SamRecord]](s) that provided evidence of this break point going "from" the breakpoint
+ * @param into the [[SamRecord]](s) that provided evidence of this break point going "into" the breakpoint
+ * @param fromIsLeft if the records in `from` correspond to the left side of the breakpoint, otherwise the right
  */
-case class BreakpointEvidence(breakpoint: Breakpoint, evidence: EvidenceType) extends Ordered[BreakpointEvidence] {
-
-  /** Defines an ordering over breakpoints, first by genomic coordinates of the left then right end, then evidence type. */
-  def compare(that: BreakpointEvidence): Int = {
-    var result              = this.breakpoint.compare(that.breakpoint)
-    if (result == 0) result = this.evidence.compare(that.evidence)
-    result
-  }
-}
+case class BreakpointEvidence(breakpoint: Breakpoint,
+                              evidence: EvidenceType,
+                              from: Set[SamRecord] = Set.empty,
+                              into: Set[SamRecord] = Set.empty,
+                              fromIsLeft: Boolean = true)
