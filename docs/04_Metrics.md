@@ -12,10 +12,32 @@ the type of each field/column is given, including two commonly used types:
 
 |Metric Type|Description|
 |-----------|-----------|
+|[AggregatedBreakpointPileup](#aggregatedbreakpointpileup)|Aggregated cluster of breakpoint pileups|
 |[BreakpointPileup](#breakpointpileup)|Represents a pileup of evidence (reads, read-pairs) for a breakpoint|
 |[MergedPileup](#mergedpileup)||
 
 ## Metric File Descriptions
+
+
+### AggregatedBreakpointPileup
+
+Aggregated cluster of breakpoint pileups
+
+|Column|Type|Description|
+|------|----|-----------|
+|id|String|Combined ID retaining the IDs of all contributing breakpoints|
+|category|BreakpointCategory|Breakpoint category|
+|left_contig|String|Contig name for left side of breakpoint|
+|left_min_pos|Int|Minimum coordinate of the left sides of all breakpoints|
+|left_max_pos|Int|Maximum coordinate of the left sides of all breakpoints|
+|left_strand|Char|Strand at left side of each breakpoint|
+|right_contig|String|Contig name for right side of breakpoint|
+|right_min_pos|Int|Minimum coordinate of the right sides of all breakpoints|
+|right_max_pos|Int|Maximum coordinate of the right sides of all breakpoints|
+|right_strand|Char|Strand at right side of each breakpoint|
+|split_reads|Int|Total number of split reads supporting the breakpoints in the cluster|
+|read_pairs|Int|Total number of read pairs supporting the breakpoints in the cluster|
+|total|Int|Total number of templates supporting the breakpoints in the cluster|
 
 
 ### BreakpointPileup

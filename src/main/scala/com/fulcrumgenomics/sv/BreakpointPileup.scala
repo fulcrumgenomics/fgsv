@@ -1,5 +1,6 @@
 package com.fulcrumgenomics.sv
 
+import com.fulcrumgenomics.sv.tools.BreakpointContigOrientation
 import com.fulcrumgenomics.util.Metric
 
 /**
@@ -32,5 +33,13 @@ case class BreakpointPileup(id: String,
                             split_reads: Int,
                             read_pairs: Int,
                             total: Int
-                           ) extends Metric
+                           ) extends Metric {
+
+  override def toString(): String = f"$id|$left_contig:$left_pos($left_strand)/" +
+    f"$right_contig:$right_pos($right_strand)|" +
+    f"$split_reads,$read_pairs,$total"
+
+  lazy val contigOrientation: BreakpointContigOrientation = BreakpointContigOrientation(this)
+
+}
 
