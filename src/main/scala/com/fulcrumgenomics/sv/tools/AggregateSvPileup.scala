@@ -9,12 +9,11 @@ import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
 import com.fulcrumgenomics.sv.tools.AggregateSvPileup.PileupGroup
 import com.fulcrumgenomics.sv.tools.BreakpointCategory.BreakpointCategory
 import com.fulcrumgenomics.util.{Io, Metric}
-import htsjdk.samtools.util.Interval
+import htsjdk.samtools.util.{Interval, OverlapDetector}
 import htsjdk.tribble.bed.{BEDCodec, BEDFeature}
-import htsjdk.tribble.{AbstractFeatureReader, CloseableTribbleIterator}
+import htsjdk.tribble.AbstractFeatureReader
 
 import scala.annotation.tailrec
-import scala.collection.immutable.HashSet
 import scala.collection.mutable
 
 
@@ -30,6 +29,11 @@ import scala.collection.mutable
     |same chromosome, the same left and right strands, and their left and right positions both within a length
     |threshold. The merging behavior is transitive. For example, two breakpoints that are farther apart than the length
     |threshold can be merged if there is a third breakpoint that is close to both.
+    |
+    |`SvPileup` distinguishes between two types of evidence for breakpoint events: split-read evidence, where a
+    |breakpoint occurs within a mapped read, and read-pair evidence, where a breakpoint occurs in the unsequenced
+    |insert between two paired reads. Currently this tool treats both forms of evidence equally, despite the
+    |inaccuracy of positions reported by `SvPileup` for read-pair evidence.
     |
     |If a bam file is provided, each aggregated pileup is annotated with the allele frequency at its left and right
     |breakends. Allele frequency is defined as the total number of templates supporting constituent breakpoints divided
@@ -49,10 +53,12 @@ class AggregateSvPileup
  @arg(flag='b', doc="Bam file for allele frequency analysis. Must be the same file that was used as input to SvPileup.")
  bam: Option[PathToBam] = None,
  @arg(flag='f', doc="If bam file is provided: distance upstream and downstream of aggregated breakpoint regions to " +
-   "search for mapped templates that overlap breakends") flank: Int = 200,
+   "search for mapped templates that overlap breakends. These are the templates that will be partitioned into those " +
+   "supporting the breakpoint vs. reading through it for the allele frequency calculation. Recommended to use at " +
+   "least the max read pair inner distance used by SvPileup.") flank: Int = 1000,
  @arg(doc="If bam file is provided: minimum total number of templates supporting an aggregated breakpoint to report " +
    "allele frequency. Supports speed improvement by avoiding querying and iterating over huge read pileups that " +
-   "contain insufficient support for a breakpoint to be considered interesting.") minTotal: Int = 10,
+   "contain insufficient support for a breakpoint to be considered interesting.") minBreakpointSupport: Int = 10,
  @arg(doc="If bam file is provided: minimum allele frequency to report. Supports speed improvement by " +
    "avoiding iterating over huge read pileups that contain insufficient support for a breakpoint to be considered " +
    "interesting.") minFrequency: Double = 0.001,
@@ -67,39 +73,27 @@ class AggregateSvPileup
   override def execute(): Unit = {
 
     // Read pileups from input file
-    val pileups: Seq[BreakpointPileup] = Metric.read[BreakpointPileup](input)
+    val pileups: PileupGroup = Metric.read[BreakpointPileup](input).toIndexedSeq
     logger.info(f"Read ${pileups.length} pileups from file $input")
 
     // Open bam reader
-    val samSource: Option[SamSource] = bam match {
-      case None => None
-      case Some(path) => Some(SamSource(path))
-    }
+    val samSource: Option[SamSource] = bam.map(SamSource(_))
 
-    // Read targets from bed file and group by contig
-    val targets: Option[Map[String, Set[Interval]]] = targetsBed match {
+    // Read targets from bed file and build OverlapDetector
+    val targets: Option[OverlapDetector[BEDFeature]] = targetsBed match {
       case None => None
       case Some(bed) =>
-        val bedReader = AbstractFeatureReader.getFeatureReader(bed.toString, new BEDCodec(), false)
-        val iter: CloseableTribbleIterator[BEDFeature] = bedReader.iterator()
-        val contigToTargets = mutable.HashMap[String, Set[Interval]]()
-        iter.forEach(feature => {
-          val contig = feature.getContig
-          val interval = new Interval(contig, feature.getStart, feature.getEnd)
-          contigToTargets.put(contig, contigToTargets.getOrElse(contig, new HashSet[Interval]()) + interval)
-        })
+        val bedReader = AbstractFeatureReader.getFeatureReader(bed.toAbsolutePath.toString, new BEDCodec(), false)
+        val bedFeatures: java.util.List[BEDFeature] = bedReader.iterator().toList
         bedReader.close()
-        iter.close()
-        logger.info(f"Read ${contigToTargets.values.map(_.size).sum} targets on ${contigToTargets.keys.size} " +
-          f"contigs from file $bed")
-        Some(contigToTargets.toMap)
+        Some(OverlapDetector.create(bedFeatures))
     }
 
     // Open output writer
     val writer = Metric.writer[AggregatedBreakpointPileup](output)
 
     // Group pileups by left and right contig and strand
-    pileups.groupMap(BreakpointContigOrientation(_))(identity).foreach { case (_, group) =>
+    pileups.groupBy(_.contigOrientation).foreach { case (_, group) =>
 
       // Within each contig+strand group, identify all immediate "neighbors" of each pileup (other pileups within the
       // distance threshold)
@@ -113,22 +107,20 @@ class AggregateSvPileup
       // Aggregate each cluster, analyze allele frequency and target overlap, and write output
       pileupClusters
         .map(AggregatedBreakpointPileup.apply)
-        .map(_.calculateFrequency(samSource, flank, minTotal, minFrequency))
+        .map(_.calculateFrequency(samSource, flank, minBreakpointSupport, minFrequency))
         .map(_.addTargetOverlap(targets))
         .foreach(writer.write)
     }
 
     writer.close()
-
   }
-
 }
 
 
 object AggregateSvPileup {
 
   /** Type alias for a collection of pileups */
-  type PileupGroup = Seq[BreakpointPileup]
+  type PileupGroup = IndexedSeq[BreakpointPileup]
 
   /**
    * Maps each pileup to the set of other pileups within the distance threshold.
@@ -141,11 +133,13 @@ object AggregateSvPileup {
    * @return Map of pileup to the set of neighbors
    */
   private def pileupToNeighbors(pileups: PileupGroup, maxDist: Int): Map[BreakpointPileup, PileupGroup] = {
-    val map: mutable.Map[BreakpointPileup, List[BreakpointPileup]] = mutable.Map.from(pileups.map((_, Nil)))
-    for (pileup1 <- pileups; pileup2 <- pileups) {
-      if (pileup1.total >= pileup2.total && isCluster(pileup1, pileup2, maxDist)) {
-        map.put(pileup1, (pileup2 :: map(pileup1)).distinct)
-        map.put(pileup2, (pileup1 :: map(pileup2)).distinct)
+    val map: mutable.Map[BreakpointPileup, PileupGroup] = mutable.Map.from(pileups.map((_, IndexedSeq())))
+    for (i <- pileups.indices; j <- pileups.indices.drop(i)) {
+      val pileup1 = pileups(i)
+      val pileup2 = pileups(j)
+      if (isCluster(pileup1, pileup2, maxDist)) {
+        map.put(pileup1, pileup2 +: map(pileup1))
+        map.put(pileup2, pileup1 +: map(pileup2))
       }
     }
     map.toMap
@@ -156,7 +150,7 @@ object AggregateSvPileup {
    * coordinates is below the threshold (inclusive) */
   private def isCluster(bp1: BreakpointPileup, bp2: BreakpointPileup, maxDist: Int): Boolean = {
     bp1.id != bp2.id &&
-      BreakpointContigOrientation(bp1) == BreakpointContigOrientation(bp2) &&
+      bp1.contigOrientation == bp2.contigOrientation &&
       Math.abs(bp1.left_pos - bp2.left_pos) <= maxDist &&
       Math.abs(bp1.right_pos - bp2.right_pos) <= maxDist
   }
@@ -195,7 +189,7 @@ object AggregateSvPileup {
   (PileupGroup, Map[BreakpointPileup, PileupGroup]) = {
 
     // Identify the immediate neighbors of the given pileup, and start a cluster containing them
-    val neighbors: PileupGroup = pileupToNeighbors.getOrElse(pileup, Seq.empty)
+    val neighbors: PileupGroup = pileupToNeighbors.getOrElse(pileup, IndexedSeq())
     val currCluster: PileupGroup = neighbors :+ pileup
 
     // Remove the given pileup from `pileupToNeighbors`
@@ -337,14 +331,24 @@ case class AggregatedBreakpointPileup(id: String,
    *                     causes (total_supporting_breakpoint / total_overlappers) to drop below this frequency, None is
    *                     returned.
    */
-  def calculateFrequency(source: Option[SamSource], flank: Int, minTotal: Int, minFrequency: Double):
+  def calculateFrequency(source: Option[SamSource],
+                         flank: Int,
+                         minTotal: Int,
+                         minFrequency: Double):
   AggregatedBreakpointPileup = {
 
     def frequency(contig: String, pileups: PositionList, minPos: Int, maxPos: Int): Option[Double] = source match {
       case None => None
       case Some(src) =>
         val numOverlap = numOverlappingTemplates(
-          src, contig, pileups, minPos - flank, maxPos + flank, minTotal, minFrequency)
+          source       = src,
+          contig       = contig,
+          breakends    = pileups,
+          queryMin     = minPos - flank,
+          queryMax     = maxPos + flank,
+          minTotal     = minTotal,
+          minFrequency = minFrequency,
+        )
         numOverlap match {
           case None => None
           case Some(n) => Some(total.toDouble / n)
@@ -375,8 +379,13 @@ case class AggregatedBreakpointPileup(id: String,
    *                     returned.
    * @return The size of the union of templates that overlap any breakend
    */
-  private def numOverlappingTemplates(source: SamSource, contig: String, breakends: PositionList, queryMin: Int,
-                                      queryMax: Int, minTotal: Int, minFrequency: Double): Option[Int] = {
+  private def numOverlappingTemplates(source: SamSource,
+                                      contig: String,
+                                      breakends: PositionList,
+                                      queryMin: Int,
+                                      queryMax: Int,
+                                      minTotal: Int,
+                                      minFrequency: Double): Option[Int] = {
 
     if (total < minTotal) return None
 
@@ -421,9 +430,9 @@ case class AggregatedBreakpointPileup(id: String,
 
   /**
    * Returns a new aggregated pileup with target overlap fields populated
-   * @param targets Optional map of contig to set of target intervals. If None, target overlap fields are set to false.
+   * @param targets Optional OverlapDetector for target intervals. If None, target overlap fields are set to false.
    */
-  def addTargetOverlap(targets: Option[Map[String, Set[Interval]]]): AggregatedBreakpointPileup = {
+  def addTargetOverlap(targets: Option[OverlapDetector[BEDFeature]]): AggregatedBreakpointPileup = {
     val (left_overlaps, right_overlaps) = targets match {
       case None => (false, false)
       case Some(t) =>
@@ -433,13 +442,8 @@ case class AggregatedBreakpointPileup(id: String,
     this.copy(left_overlaps_target = left_overlaps, right_overlaps_target = right_overlaps)
   }
 
-  private def overlapsTarget(contig: String, start: Int, end: Int, targets: Map[String, Set[Interval]]): Boolean = {
-    targets.get(contig) match {
-      case None => false
-      case Some(t) =>
-        val interval = new Interval(contig, start, end)
-        t.exists(target => target.overlaps(interval))
-    }
+  private def overlapsTarget(contig: String, start: Int, end: Int, targets: OverlapDetector[BEDFeature]): Boolean = {
+    targets.overlapsAny(new Interval(contig, start, end))
   }
 
 }
@@ -449,7 +453,7 @@ object AggregatedBreakpointPileup {
 
   def apply(pileups: PileupGroup): AggregatedBreakpointPileup = {
     pileups match {
-      case head :: tail =>
+      case head +: tail =>
         val headAgg = AggregatedBreakpointPileup(
           id             = head.id,
           category       = BreakpointCategory(head),

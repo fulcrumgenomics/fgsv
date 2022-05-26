@@ -31,7 +31,7 @@ class AggregateSvPileupTest extends UnitSpec {
     new AggregateSvPileup(
       inputFile,
       bam = bam,
-      minTotal = 0,
+      minBreakpointSupport = 0,
       minFrequency = 0,
       flank = flank,
       targetsBed = targets,
@@ -216,29 +216,29 @@ class AggregateSvPileupTest extends UnitSpec {
 
   // For example pileups that share contig and strand of both ends, map of pileup to neighbors for use in tests
   private val pileup_to_neighbors_1_plus_plus = Map(
-    pileup_id112_1_100_plus_3_200_plus -> Seq(pileup_id456_1_200_plus_3_100_plus),
-    pileup_id456_1_200_plus_3_100_plus -> Seq(pileup_id112_1_100_plus_3_200_plus, pileup_id5_1_300_plus_3_200_plus),
-    pileup_id5_1_300_plus_3_200_plus -> Seq(pileup_id456_1_200_plus_3_100_plus),
-    pileup_id6_1_300_plus_3_401_plus -> Seq(),
+    pileup_id112_1_100_plus_3_200_plus -> IndexedSeq(pileup_id456_1_200_plus_3_100_plus),
+    pileup_id456_1_200_plus_3_100_plus -> IndexedSeq(pileup_id112_1_100_plus_3_200_plus, pileup_id5_1_300_plus_3_200_plus),
+    pileup_id5_1_300_plus_3_200_plus -> IndexedSeq(pileup_id456_1_200_plus_3_100_plus),
+    pileup_id6_1_300_plus_3_401_plus -> IndexedSeq(),
   )
 
   "AggregateSvPileup.toClusters" should "return correct clusters" in {
     val obsClusters = AggregateSvPileup.toClusters(pileup_to_neighbors_1_plus_plus).sortBy(_.size)
     obsClusters.size shouldBe 2
-    obsClusters(0) shouldBe Seq(pileup_id6_1_300_plus_3_401_plus)
-    obsClusters(1) should contain theSameElementsAs Seq(
+    obsClusters(0) shouldBe IndexedSeq(pileup_id6_1_300_plus_3_401_plus)
+    obsClusters(1) should contain theSameElementsAs IndexedSeq(
       pileup_id112_1_100_plus_3_200_plus, pileup_id456_1_200_plus_3_100_plus, pileup_id5_1_300_plus_3_200_plus
     )
   }
 
   "AggregateSvPileup.extractClusterFor" should "return correct cluster of size 1" in {
     AggregateSvPileup.extractClusterFor(pileup_id6_1_300_plus_3_401_plus, pileup_to_neighbors_1_plus_plus) should be (
-      Seq(pileup_id6_1_300_plus_3_401_plus), pileup_to_neighbors_1_plus_plus.removed(pileup_id6_1_300_plus_3_401_plus)
+      IndexedSeq(pileup_id6_1_300_plus_3_401_plus), pileup_to_neighbors_1_plus_plus.removed(pileup_id6_1_300_plus_3_401_plus)
     )
   }
 
   it should "return correct cluster of size > 1" in {
-    val pileups = Seq(pileup_id112_1_100_plus_3_200_plus, pileup_id456_1_200_plus_3_100_plus, pileup_id5_1_300_plus_3_200_plus)
+    val pileups = IndexedSeq(pileup_id112_1_100_plus_3_200_plus, pileup_id456_1_200_plus_3_100_plus, pileup_id5_1_300_plus_3_200_plus)
     pileups.foreach {pileup =>
       AggregateSvPileup.extractClusterFor(pileup, pileup_to_neighbors_1_plus_plus) match {
         case (cluster, _) =>
@@ -248,13 +248,13 @@ class AggregateSvPileupTest extends UnitSpec {
   }
 
   "AggregateSvPileup" should "return an empty seq for empty input" in {
-    runEndToEnd(Seq()) shouldEqual Seq()
+    runEndToEnd(IndexedSeq()) shouldEqual IndexedSeq()
   }
 
   it should "aggregate a single pileup" in {
-    val pileups = Seq(pileup_id112_1_100_plus_3_200_plus)
+    val pileups = IndexedSeq(pileup_id112_1_100_plus_3_200_plus)
     val aggregatedPileups = runEndToEnd(pileups)
-    aggregatedPileups should contain theSameElementsAs Seq(
+    aggregatedPileups should contain theSameElementsAs IndexedSeq(
       AggregatedBreakpointPileup(
         id             = "112",
         category       = "Inter-contig rearrangement",
@@ -276,7 +276,7 @@ class AggregateSvPileupTest extends UnitSpec {
   }
 
   it should "aggregate multiple pileups with no bam or target file" in {
-    val pileups = Seq(
+    val pileups = IndexedSeq(
       pileup_id112_1_100_plus_3_200_plus,
       pileup_id222_1_100_plus_1_200_plus,
       pileup_id3_1_100_plus_3_200_minus,
@@ -364,12 +364,12 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val aggregatedPileups = runEndToEnd(pileups)
-    aggregatedPileups should contain theSameElementsAs Seq(expAgg1, expAgg2, expAgg3, expAgg4)
+    aggregatedPileups should contain theSameElementsAs IndexedSeq(expAgg1, expAgg2, expAgg3, expAgg4)
 
   }
 
   it should "aggregate multiple pileups with bam and target files" in {
-    val pileups = Seq(
+    val pileups = IndexedSeq(
       pileup_id6_1_300_plus_3_401_plus,
       pileup_id7_1_400_plus_3_300_plus,
       pileup_id8_1_500_plus_3_400_plus,
@@ -422,12 +422,12 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val aggregatedPileups = runEndToEnd(pileups, bam = Some(bam), targets = Some(bed))
-    aggregatedPileups should contain theSameElementsAs Seq(expAgg1, expAgg2)
+    aggregatedPileups should contain theSameElementsAs IndexedSeq(expAgg1, expAgg2)
 
   }
 
   it should "aggregate multiple pileups with a bam file" in {
-    val pileups = Seq(
+    val pileups = IndexedSeq(
       pileup_id7_1_400_plus_3_300_plus,
       pileup_id8_1_500_plus_3_400_plus,
       pileup_id9_1_600_plus_3_500_plus,
@@ -456,12 +456,12 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val aggregatedPileups = runEndToEnd(pileups, bam = Some(bam))
-    aggregatedPileups should contain theSameElementsAs Seq(expAgg)
+    aggregatedPileups should contain theSameElementsAs IndexedSeq(expAgg)
 
   }
 
   it should "aggregate multiple pileups with a target file" in {
-    val pileups = Seq(
+    val pileups = IndexedSeq(
       pileup_id7_1_400_plus_3_300_plus,
       pileup_id8_1_500_plus_3_400_plus,
       pileup_id9_1_600_plus_3_500_plus,
@@ -491,7 +491,7 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val aggregatedPileups = runEndToEnd(pileups, targets = Some(bed))
-    aggregatedPileups should contain theSameElementsAs Seq(expAgg)
+    aggregatedPileups should contain theSameElementsAs IndexedSeq(expAgg)
 
   }
 
