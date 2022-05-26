@@ -25,19 +25,25 @@ Aggregated cluster of breakpoint pileups
 
 |Column|Type|Description|
 |------|----|-----------|
-|id|String|Combined ID retaining the IDs of all contributing breakpoints|
+|id|String|Combined ID retaining the IDs of all constituent breakpoints|
 |category|BreakpointCategory|Breakpoint category|
 |left_contig|String|Contig name for left side of breakpoint|
-|left_min_pos|Int|Minimum coordinate of the left sides of all breakpoints|
-|left_max_pos|Int|Maximum coordinate of the left sides of all breakpoints|
-|left_strand|Char|Strand at left side of each breakpoint|
+|left_min_pos|Int|Minimum coordinate of left breakends|
+|left_max_pos|Int|Maximum coordinate of left breakends|
+|left_strand|Char|Strand at left breakends|
 |right_contig|String|Contig name for right side of breakpoint|
-|right_min_pos|Int|Minimum coordinate of the right sides of all breakpoints|
-|right_max_pos|Int|Maximum coordinate of the right sides of all breakpoints|
-|right_strand|Char|Strand at right side of each breakpoint|
+|right_min_pos|Int|Minimum coordinate of right breakends|
+|right_max_pos|Int|Maximum coordinate of right breakends|
+|right_strand|Char|Strand at right breakends|
 |split_reads|Int|Total number of split reads supporting the breakpoints in the cluster|
 |read_pairs|Int|Total number of read pairs supporting the breakpoints in the cluster|
 |total|Int|Total number of templates supporting the breakpoints in the cluster|
+|left_pileups|PositionList|List of constituent left breakends|
+|right_pileups|PositionList|List of constituent right breakends|
+|left_frequency|Option[Double]|Proportion of templates mapping at one of the left breakends that support a breakpoint.                              If a template maps across multiple breakends, it is only counted once. If a template                              maps entirely between two breakends but does not overlap one, it is not counted. If two                              paired reads straddle a breakend, the template is counted as reading across the                              breakend. If two paired reads both overlap the same breakend, the template is counted                              once.|
+|right_frequency|Option[Double]|Proportion of reads mapping at one of the right breakends that support a breakpoint|
+|left_overlaps_target|Boolean|True if the left aggregated region overlaps a target region|
+|right_overlaps_target|Boolean|True if the right aggregated region overlaps a target region|
 
 
 ### BreakpointPileup
