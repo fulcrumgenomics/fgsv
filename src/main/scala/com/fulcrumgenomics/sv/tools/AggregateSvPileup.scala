@@ -168,7 +168,7 @@ object AggregateSvPileup {
     pileupToNeighbors.headOption match {
       case None              => existingClusters
       case Some((pileup, _)) =>
-        val (pileupGroup, remaining) = extractClusterFor(pileup, pileupToNeighbors)
+        val (pileupGroup, remaining) = extractClusterFor(pileup, pileupToNeighbors, Set.empty)
         toClusters(remaining, existingClusters :+ pileupGroup)
     }
   }
@@ -182,14 +182,14 @@ object AggregateSvPileup {
    *
    * @param pileup The pileup representative of the cluster that will be returned
    * @param pileupToNeighbors Map of pileup to its set of neighbors
+   * @parma neighborsToIgnore Set of pileups to ignore, as they are being considered in parent calls to this method
    * @return (1) The complete cluster for the given pileup; (2) Reduced version of `pileupToNeighbors` with all pileups
    *         in the returned cluster having been removed from both keys and values.
    */
-  def extractClusterFor(pileup: BreakpointPileup, pileupToNeighbors: Map[BreakpointPileup, PileupGroup]):
+  def extractClusterFor(pileup: BreakpointPileup, pileupToNeighbors: Map[BreakpointPileup, PileupGroup], neighborsToIgnore: Set[BreakpointPileup]):
   (PileupGroup, Map[BreakpointPileup, PileupGroup]) = {
-
     // Identify the immediate neighbors of the given pileup, and start a cluster containing them
-    val neighbors: PileupGroup = pileupToNeighbors.getOrElse(pileup, IndexedSeq())
+    val neighbors: PileupGroup = pileupToNeighbors.getOrElse(pileup, IndexedSeq()).filter(neighborsToIgnore.contains)
     val currCluster: PileupGroup = neighbors :+ pileup
 
     // Remove the given pileup from `pileupToNeighbors`
@@ -199,7 +199,7 @@ object AggregateSvPileup {
     // and so on. With each iteration of the foldLeft operation, we are keeping track of a tuple consisting of
     // (1) a growing connected cluster, and (2) a shrinking map of remaining pileups to their neighbor sets.
     neighbors.foldLeft((currCluster, reducedRemainingGroups)) { case ((currCluster, remaining), nextNeighbor) =>
-      val (expandedCluster, reducedRemaining) = extractClusterFor(nextNeighbor, remaining)
+      val (expandedCluster, reducedRemaining) = extractClusterFor(nextNeighbor, remaining, neighborsToIgnore ++ neighbors.toSet)
       ((currCluster ++ expandedCluster).distinct, reducedRemaining)
     }
   }
