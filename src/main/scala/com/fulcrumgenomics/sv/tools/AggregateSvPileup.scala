@@ -384,7 +384,7 @@ case class AggregatedBreakpointPileup(id: String,
 
     // Whether to check the full template for overlap including both reads and insert
     def checkAsPair(rec: SamRecord): Boolean = {
-      rec.paired &&
+      rec.paired && rec.mapped && rec.mateMapped &&
         rec.refName == rec.mateRefName &&
         ((rec.start <= rec.mateStart && rec.positiveStrand && rec.mateNegativeStrand)
           || (rec.start >= rec.mateStart && rec.negativeStrand && rec.matePositiveStrand))
