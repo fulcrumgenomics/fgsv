@@ -182,7 +182,7 @@ object AggregateSvPileup {
    *
    * @param pileup The pileup representative of the cluster that will be returned
    * @param pileupToNeighbors Map of pileup to its set of neighbors
-   * @parma neighborsToIgnore Set of pileups to ignore, as they are being considered in parent calls to this method
+   * @param neighborsToIgnore Set of pileups to ignore, as they are being considered in parent calls to this method
    * @return (1) The complete cluster for the given pileup; (2) Reduced version of `pileupToNeighbors` with all pileups
    *         in the returned cluster having been removed from both keys and values.
    */
