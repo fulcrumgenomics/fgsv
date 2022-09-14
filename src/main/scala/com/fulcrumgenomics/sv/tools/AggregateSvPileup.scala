@@ -168,18 +168,20 @@ object AggregateSvPileup {
       if (!visited.contains(rootPileup)) {
         val remaining = scala.collection.mutable.Queue[BreakpointPileup]()
         val component = Set.newBuilder[BreakpointPileup]
-        remaining += rootPileup
+        remaining.enqueue(rootPileup)
         while (remaining.nonEmpty) {
           // get the next pileup to examine
           val curPileup = remaining.dequeue()
-          if (!visited.contains(curPileup)) {
-            // add it to this component
-            component += curPileup
-            // add all unvisited neighbors
-            remaining ++= pileupToNeighbors(curPileup).filterNot(visited.contains)
-            // marks this pileup as visited
-            visited.add(curPileup)
-          }
+          // add it to this component
+          component += curPileup
+          // find all unvisited neighbors
+          val unvisited = pileupToNeighbors(curPileup).filterNot(visited.contains)
+          // add the unvisited neighbors to the queue
+          remaining ++= unvisited
+          // mark the unvisited neighbors as being visited so we don't enqueue them later
+          unvisited.foreach(visited.add)
+          // mark this pileup as visited
+          visited.add(curPileup)
         }
         components += component.result().toIndexedSeq
       }
