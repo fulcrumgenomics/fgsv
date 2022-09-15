@@ -231,22 +231,6 @@ class AggregateSvPileupTest extends UnitSpec {
     )
   }
 
-  "AggregateSvPileup.extractClusterFor" should "return correct cluster of size 1" in {
-    AggregateSvPileup.extractClusterFor(pileup_id6_1_300_plus_3_401_plus, pileup_to_neighbors_1_plus_plus) should be (
-      IndexedSeq(pileup_id6_1_300_plus_3_401_plus), pileup_to_neighbors_1_plus_plus.removed(pileup_id6_1_300_plus_3_401_plus)
-    )
-  }
-
-  it should "return correct cluster of size > 1" in {
-    val pileups = IndexedSeq(pileup_id112_1_100_plus_3_200_plus, pileup_id456_1_200_plus_3_100_plus, pileup_id5_1_300_plus_3_200_plus)
-    pileups.foreach {pileup =>
-      AggregateSvPileup.extractClusterFor(pileup, pileup_to_neighbors_1_plus_plus) match {
-        case (cluster, _) =>
-          cluster should contain theSameElementsAs pileups
-      }
-    }
-  }
-
   "AggregateSvPileup" should "return an empty seq for empty input" in {
     runEndToEnd(IndexedSeq()) shouldEqual IndexedSeq()
   }
@@ -365,7 +349,6 @@ class AggregateSvPileupTest extends UnitSpec {
 
     val aggregatedPileups = runEndToEnd(pileups)
     aggregatedPileups should contain theSameElementsAs IndexedSeq(expAgg1, expAgg2, expAgg3, expAgg4)
-
   }
 
   it should "aggregate multiple pileups with bam and target files" in {

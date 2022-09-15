@@ -13,7 +13,6 @@ import htsjdk.samtools.util.{Interval, OverlapDetector}
 import htsjdk.tribble.bed.{BEDCodec, BEDFeature}
 import htsjdk.tribble.AbstractFeatureReader
 
-import scala.annotation.tailrec
 import scala.collection.mutable
 
 
@@ -159,49 +158,36 @@ object AggregateSvPileup {
    * Converts a set of pairwise neighbor relationships to a set of clusters, where each cluster consists of breakpoints
    * that can be joined into a connected path via pairwise neighbor relationships.
    * @param pileupToNeighbors Map of pileup to its set of neighbors
-   * @param existingClusters An existing set of clusters to add to
    * @return The set of pileup clusters
    */
-  @tailrec
-  def toClusters(pileupToNeighbors: Map[BreakpointPileup, PileupGroup],
-                 existingClusters: Seq[PileupGroup] = Seq()): Seq[PileupGroup] = {
-    pileupToNeighbors.headOption match {
-      case None              => existingClusters
-      case Some((pileup, _)) =>
-        val (pileupGroup, remaining) = extractClusterFor(pileup, pileupToNeighbors)
-        toClusters(remaining, existingClusters :+ pileupGroup)
+  def toClusters(pileupToNeighbors: Map[BreakpointPileup, PileupGroup]): Seq[PileupGroup] = {
+    // The following finds connnected components in a breadth first manner
+    val visited    = scala.collection.mutable.HashSet[BreakpointPileup]()
+    val components = IndexedSeq.newBuilder[PileupGroup]
+    pileupToNeighbors.keys.foreach { rootPileup =>
+      if (!visited.contains(rootPileup)) {
+        val remaining = scala.collection.mutable.Queue[BreakpointPileup]()
+        val component = Set.newBuilder[BreakpointPileup]
+        remaining.enqueue(rootPileup)
+        while (remaining.nonEmpty) {
+          // get the next pileup to examine
+          val curPileup = remaining.dequeue()
+          // add it to this component
+          component += curPileup
+          // find all unvisited neighbors
+          val unvisited = pileupToNeighbors(curPileup).filterNot(visited.contains)
+          // add the unvisited neighbors to the queue
+          remaining ++= unvisited
+          // mark the unvisited neighbors as being visited so we don't enqueue them later
+          unvisited.foreach(visited.add)
+          // mark this pileup as visited
+          visited.add(curPileup)
+        }
+        components += component.result().toIndexedSeq
+      }
     }
-  }
 
-  /**
-   * Extracts the complete connected cluster containing the given pileup from the map of pileups to their neighbor sets,
-   * and returns the cluster along with the reduced map of pileup to neighbor set such that no remaining pileups in the
-   * map belong in a cluster with the returned cluster.
-   *
-   * Implementation note: the implementation is not tail-recursive, but in practice the recursion depth is small.
-   *
-   * @param pileup The pileup representative of the cluster that will be returned
-   * @param pileupToNeighbors Map of pileup to its set of neighbors
-   * @return (1) The complete cluster for the given pileup; (2) Reduced version of `pileupToNeighbors` with all pileups
-   *         in the returned cluster having been removed from both keys and values.
-   */
-  def extractClusterFor(pileup: BreakpointPileup, pileupToNeighbors: Map[BreakpointPileup, PileupGroup]):
-  (PileupGroup, Map[BreakpointPileup, PileupGroup]) = {
-
-    // Identify the immediate neighbors of the given pileup, and start a cluster containing them
-    val neighbors: PileupGroup = pileupToNeighbors.getOrElse(pileup, IndexedSeq())
-    val currCluster: PileupGroup = neighbors :+ pileup
-
-    // Remove the given pileup from `pileupToNeighbors`
-    val reducedRemainingGroups: Map[BreakpointPileup, PileupGroup] = pileupToNeighbors.removed(pileup)
-
-    // Recursively build a cluster consisting of this pileup's immediate neighbors, their immediate neighbors,
-    // and so on. With each iteration of the foldLeft operation, we are keeping track of a tuple consisting of
-    // (1) a growing connected cluster, and (2) a shrinking map of remaining pileups to their neighbor sets.
-    neighbors.foldLeft((currCluster, reducedRemainingGroups)) { case ((currCluster, remaining), nextNeighbor) =>
-      val (expandedCluster, reducedRemaining) = extractClusterFor(nextNeighbor, remaining)
-      ((currCluster ++ expandedCluster).distinct, reducedRemaining)
-    }
+    components.result()
   }
 }
 
