@@ -1,5 +1,8 @@
 package com.fulcrumgenomics.sv
 
+import com.fulcrumgenomics.fasta.SequenceDictionary
+import htsjdk.samtools.util.Interval
+
 object Breakpoint {
   /**
    * Builds a breakpoint from two aligned segments.
@@ -97,4 +100,19 @@ case class Breakpoint(leftRefIndex: Int,
   def isCanonical: Boolean = (leftRefIndex < rightRefIndex) ||
     (leftRefIndex == rightRefIndex && leftPos < rightPos) ||
     (leftRefIndex == rightRefIndex && leftPos == rightPos && leftPositive)
+
+  /** Returns an [[Interval]] for the left side of this breakpoint */
+  def leftInterval(dict: SequenceDictionary): Interval = new Interval(
+    dict(leftRefIndex).name,
+    leftPos,
+    leftPos
+  )
+
+  /** Returns an [[Interval]] for the right side of this breakpoint */
+  def rightInterval(dict: SequenceDictionary): Interval = new Interval(
+    dict(rightRefIndex).name,
+    rightPos,
+    rightPos
+  )
+
 }

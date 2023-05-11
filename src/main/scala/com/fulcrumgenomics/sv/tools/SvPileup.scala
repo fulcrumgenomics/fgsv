@@ -9,9 +9,12 @@ import com.fulcrumgenomics.fasta.SequenceDictionary
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.sv.EvidenceType._
 import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
-import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, BreakpointPileup, EvidenceType}
+import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, BreakpointPileup, EvidenceType, FgSvDef}
 import com.fulcrumgenomics.util.{Io, Metric, ProgressLogger}
 import htsjdk.samtools.SAMFileHeader.{GroupOrder, SortOrder}
+import htsjdk.samtools.util.{Interval, OverlapDetector}
+import htsjdk.tribble.AbstractFeatureReader
+import htsjdk.tribble.bed.{BEDCodec, BEDFeature}
 
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
@@ -94,7 +97,9 @@ class SvPileup
  @arg(flag='b', doc="The minimum # of uncovered query bases needed to add a supplemental alignment") minUniqueBasesToAdd: Int = 20,
  @arg(flag='s', doc="""
    |The number of bases of slop to allow when determining which records to track for the left or right
-   |side of an aligned segment when merging segments.""") slop: Int = 5
+   |side of an aligned segment when merging segments.""") slop: Int = 5,
+ @arg(flag='t', doc="Optional bed file of target regions") targetsBed: Option[FilePath] = None,
+ @arg(flag='B', doc="Require both ends of a breakpoint to overlap the target regions") bothEndsOverlapTargets: Boolean = false,
 ) extends SvTool {
 
   import SvPileup._
@@ -113,6 +118,7 @@ class SvPileup
     val bamOut    = SamWriter(PathUtil.pathTo(s"$output.bam"), header=outHeader)
     val progress  = new ProgressLogger(logger, noun="templates")
     val tracker   = new BreakpointTracker()
+    val targets   = targetsBed.map(FgSvDef.overlapDetectorFrom)
 
     Bams.templateIterator(source)
       .tapEach(t => progress.record(t.allReads.next()))
@@ -127,11 +133,23 @@ class SvPileup
           slop                     = slop
         )
 
+        val filteredEvidences = evidences.filter { ev =>
+          targets.forall { detector =>
+            val leftBreakpoint  = ev.breakpoint.leftInterval(source.dict)
+            val rightBreakpoint = ev.breakpoint.leftInterval(source.dict)
+            if (bothEndsOverlapTargets) {
+              detector.overlapsAny(leftBreakpoint) && detector.overlapsAny(rightBreakpoint)
+            } else {
+              detector.overlapsAny(leftBreakpoint) || detector.overlapsAny(rightBreakpoint)
+            }
+          }
+        }
+
         // Update the tracker
-        evidences.foreach { ev => tracker.count(ev.breakpoint, ev.evidence) }
+        filteredEvidences.foreach { ev => tracker.count(ev.breakpoint, ev.evidence) }
 
         // Optionally write the reads to a BAM
-        maybeWriteTemplate(template, evidences, tracker, bamOut)
+        maybeWriteTemplate(template, filteredEvidences, tracker, bamOut)
       }
 
     progress.logLast()
