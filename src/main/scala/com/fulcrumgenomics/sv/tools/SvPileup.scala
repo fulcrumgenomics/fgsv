@@ -156,9 +156,9 @@ class SvPileup
             val leftBreakpoint  = ev.breakpoint.leftInterval(source.dict)
             val rightBreakpoint = ev.breakpoint.rightInterval(source.dict)
             targetsBedRequirement match {
-              case TargetBedRequirement.AnnotateOnly    => true
-              case TargetBedRequirement.OverlapAny  => detector.overlapsAny(leftBreakpoint) || detector.overlapsAny(rightBreakpoint)
-              case TargetBedRequirement.OverlapBoth => detector.overlapsAny(leftBreakpoint) && detector.overlapsAny(rightBreakpoint)
+              case TargetBedRequirement.AnnotateOnly => true
+              case TargetBedRequirement.OverlapAny   => detector.overlapsAny(leftBreakpoint) || detector.overlapsAny(rightBreakpoint)
+              case TargetBedRequirement.OverlapBoth  => detector.overlapsAny(leftBreakpoint) && detector.overlapsAny(rightBreakpoint)
             }
           }
         }
