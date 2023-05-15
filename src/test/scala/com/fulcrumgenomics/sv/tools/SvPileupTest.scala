@@ -9,6 +9,7 @@ import com.fulcrumgenomics.sv.EvidenceType.{ReadPair, SplitRead}
 import com.fulcrumgenomics.sv.SegmentOrigin.{Both, ReadOne, ReadTwo}
 import com.fulcrumgenomics.sv._
 import com.fulcrumgenomics.testing.SamBuilder
+import com.fulcrumgenomics.util.{Io, Metric}
 import htsjdk.samtools.SamPairUtil
 
 class SvPileupTest extends UnitSpec {
@@ -410,7 +411,7 @@ class SvPileupTest extends UnitSpec {
       Outputs(
         prefix = prefix,
         bam    = PathUtil.pathTo(prefix + ".bam"),
-        txt    = PathUtil.pathTo(prefix + ".bam")
+        txt    = PathUtil.pathTo(prefix + ".txt")
       )
     }
   }
@@ -466,5 +467,74 @@ class SvPileupTest extends UnitSpec {
     SamPairUtil.setMateInformationOnSupplementalAlignment(r2Half2.asSam, r1Half1.asSam, true)
     SamPairUtil.setMateInformationOnSupplementalAlignment(r1Half2.asSam, r2Half1.asSam, true)
     test(Seq(r1Half1, r1Half2, r2Half1, r2Half2), Seq(leftFromTag, rightIntoTag, rightIntoTag, leftFromTag))
+  }
+
+  it should "annotate the sides of a breakpoint given a BED file" in {
+    // A set of reads where each read (r1/r2) is either completely aligned near one side of
+    // breakpoint, or the read is split-read aligned across the breakpoint.
+
+    // chr1 -> chr7
+    val bp1R1Half1 = r("chr1", 100, Plus, r = 1, cigar = "50M50S", supp = false)
+    val bp1R1Half2 = r("chr7", 800, Plus, r = 1, cigar = "50S50M", supp = true)
+    val bp1FullR2  = r("chr7", 850, Minus, r = 2, cigar = "100M", supp = false)
+
+    // chr2 -> chr6
+    val bp2R1Half1 = r("chr2", 100, Plus, r = 1, cigar = "50M50S", supp = false)
+    val bp2R1Half2 = r("chr6", 800, Plus, r = 1, cigar = "50S50M", supp = true)
+    val bp2FullR2  = r("chr6", 850, Minus, r = 2, cigar = "100M", supp = false)
+
+
+    // Set query name and mate info
+    Seq(bp1R1Half1, bp1R1Half2, bp1FullR2).foreach { rec => rec.name = "q1" }
+    Seq(bp2R1Half1, bp2R1Half2, bp2FullR2).foreach { rec => rec.name = "q2" }
+    SamPairUtil.setMateInfo(bp1R1Half1.asSam, bp1FullR2.asSam, true)
+    SamPairUtil.setMateInformationOnSupplementalAlignment(bp1R1Half2.asSam, bp1FullR2.asSam, true)
+    SamPairUtil.setMateInfo(bp2R1Half1.asSam, bp2FullR2.asSam, true)
+    SamPairUtil.setMateInformationOnSupplementalAlignment(bp2R1Half2.asSam, bp2FullR2.asSam, true)
+    val allReqs = Seq(bp1R1Half1, bp1R1Half2, bp1FullR2, bp2R1Half1, bp2R1Half2, bp2FullR2)
+
+    def test(recs: Seq[SamRecord], requirement: TargetBedRequirement, bed: Option[FilePath], breakpoints: BreakpointPileup*): Unit = {
+      val input = toInput(recs: _*)
+      val outputs = Outputs()
+      new SvPileup(input = input, output=outputs.prefix, targetsBed=bed, targetsBedRequirement=requirement).execute()
+      Metric.read[BreakpointPileup](outputs.txt) should contain theSameElementsInOrderAs breakpoints
+    }
+
+    val leftOnlyBed = makeTempFile("left_only", ".bed")
+    Io.writeLines(leftOnlyBed, Seq("chr1\t148\t149\tleft"))
+    val rightOnlyBed = makeTempFile("right_only", ".bed")
+    Io.writeLines(rightOnlyBed, Seq("chr7\t799\t800\tright"))
+    val bothBed = makeTempFile("both", ".bed")
+    Io.writeLines(bothBed, Seq("chr1\t148\t149\tleft", "chr7\t799\t800\tright"))
+
+    val bp1 = BreakpointPileup("0", "chr1", 149, '+', "chr7", 800, '+', 1, 0, 1, None, None)
+    val bp2 = BreakpointPileup("1", "chr2", 149, '+', "chr6", 800, '+', 1, 0, 1, None, None)
+
+    // No input BED file
+    {
+      test(allReqs, TargetBedRequirement.AnnotateOnly, None, bp1, bp2)
+    }
+
+    // Annotations only
+    {
+      test(allReqs, TargetBedRequirement.AnnotateOnly, Some(leftOnlyBed), bp1.copy(left_target=Some("left")), bp2)
+      test(allReqs, TargetBedRequirement.AnnotateOnly, Some(rightOnlyBed), bp1.copy(right_target=Some("right")), bp2)
+      test(allReqs, TargetBedRequirement.AnnotateOnly, Some(bothBed),  bp1.copy(left_target=Some("left"), right_target=Some("right")), bp2)
+    }
+
+    // OverlapsAny (bp2 not output)
+    {
+      test(allReqs, TargetBedRequirement.OverlapAny, Some(leftOnlyBed), bp1.copy(left_target = Some("left")))
+      test(allReqs, TargetBedRequirement.OverlapAny, Some(rightOnlyBed), bp1.copy(right_target = Some("right")))
+      test(allReqs, TargetBedRequirement.OverlapAny, Some(bothBed), bp1.copy(left_target = Some("left"), right_target = Some("right")))
+    }
+
+
+    // OverlapsBoth
+    {
+      test(allReqs, TargetBedRequirement.OverlapBoth, Some(leftOnlyBed))
+      test(allReqs, TargetBedRequirement.OverlapBoth, Some(rightOnlyBed))
+      test(allReqs, TargetBedRequirement.OverlapBoth, Some(bothBed), bp1.copy(left_target = Some("left"), right_target = Some("right")))
+    }
   }
 }
