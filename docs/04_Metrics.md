@@ -66,8 +66,8 @@ the only information comes from read-pairs and the breakpoint information should
 |split_reads|Int|The number of templates/inserts with split-read alignments that identified this breakpoint.|
 |read_pairs|Int|The number of templates/inserts with read-pair alignments (and without split-read alignments)                      that identified this breakpoint.|
 |total|Int|The total number of templates/inserts that identified this breakpoint|
-|left_target|Option[String]|The comma-delimited list of target names overlapping the left breakpoint|
-|right_target|Option[String]|The comma-delimited list of target names overlapping the right breakpoint|
+|left_targets|Option[String]|The comma-delimited list of target names overlapping the left breakpoint|
+|right_targets|Option[String]|The comma-delimited list of target names overlapping the right breakpoint|
 
 
 ### MergedPileup
