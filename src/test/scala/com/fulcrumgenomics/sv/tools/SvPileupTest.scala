@@ -517,16 +517,16 @@ class SvPileupTest extends UnitSpec {
 
     // Annotations only
     {
-      test(allReqs, TargetBedRequirement.AnnotateOnly, Some(leftOnlyBed), bp1.copy(left_target=Some("left")), bp2)
-      test(allReqs, TargetBedRequirement.AnnotateOnly, Some(rightOnlyBed), bp1.copy(right_target=Some("right")), bp2)
-      test(allReqs, TargetBedRequirement.AnnotateOnly, Some(bothBed),  bp1.copy(left_target=Some("left"), right_target=Some("right")), bp2)
+      test(allReqs, TargetBedRequirement.AnnotateOnly, Some(leftOnlyBed), bp1.copy(left_targets=Some("left")), bp2)
+      test(allReqs, TargetBedRequirement.AnnotateOnly, Some(rightOnlyBed), bp1.copy(right_targets=Some("right")), bp2)
+      test(allReqs, TargetBedRequirement.AnnotateOnly, Some(bothBed),  bp1.copy(left_targets=Some("left"), right_targets=Some("right")), bp2)
     }
 
     // OverlapsAny (bp2 not output)
     {
-      test(allReqs, TargetBedRequirement.OverlapAny, Some(leftOnlyBed), bp1.copy(left_target = Some("left")))
-      test(allReqs, TargetBedRequirement.OverlapAny, Some(rightOnlyBed), bp1.copy(right_target = Some("right")))
-      test(allReqs, TargetBedRequirement.OverlapAny, Some(bothBed), bp1.copy(left_target = Some("left"), right_target = Some("right")))
+      test(allReqs, TargetBedRequirement.OverlapAny, Some(leftOnlyBed), bp1.copy(left_targets = Some("left")))
+      test(allReqs, TargetBedRequirement.OverlapAny, Some(rightOnlyBed), bp1.copy(right_targets = Some("right")))
+      test(allReqs, TargetBedRequirement.OverlapAny, Some(bothBed), bp1.copy(left_targets = Some("left"), right_targets = Some("right")))
     }
 
 
@@ -534,7 +534,7 @@ class SvPileupTest extends UnitSpec {
     {
       test(allReqs, TargetBedRequirement.OverlapBoth, Some(leftOnlyBed))
       test(allReqs, TargetBedRequirement.OverlapBoth, Some(rightOnlyBed))
-      test(allReqs, TargetBedRequirement.OverlapBoth, Some(bothBed), bp1.copy(left_target = Some("left"), right_target = Some("right")))
+      test(allReqs, TargetBedRequirement.OverlapBoth, Some(bothBed), bp1.copy(left_targets = Some("left"), right_targets = Some("right")))
     }
   }
 }

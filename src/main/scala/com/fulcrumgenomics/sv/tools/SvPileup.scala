@@ -8,8 +8,8 @@ import com.fulcrumgenomics.commons.util.LazyLogging
 import com.fulcrumgenomics.fasta.SequenceDictionary
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.sv.EvidenceType._
-import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
 import com.fulcrumgenomics.sv._
+import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
 import com.fulcrumgenomics.util.{Io, Metric, ProgressLogger}
 import enumeratum.EnumEntry
 import htsjdk.samtools.SAMFileHeader.{GroupOrder, SortOrder}
@@ -136,7 +136,7 @@ class SvPileup
     val bamOut    = SamWriter(PathUtil.pathTo(s"$output.bam"), header=outHeader)
     val progress  = new ProgressLogger(logger, noun="templates")
     val tracker   = new BreakpointTracker()
-    val targets   = targetsBed.map(FgSvDef.overlapDetectorFrom)
+    val targets   = targetsBed.map(Intervals.overlapDetectorFrom)
 
     Bams.templateIterator(source)
       .tapEach(t => progress.record(t.allReads.next()))
@@ -151,16 +151,18 @@ class SvPileup
           slop                     = slop
         )
 
-        val filteredEvidences = evidences.filter { ev =>
-          targets.forall { detector =>
-            val leftBreakpoint  = ev.breakpoint.leftInterval(source.dict)
-            val rightBreakpoint = ev.breakpoint.rightInterval(source.dict)
-            targetsBedRequirement match {
-              case TargetBedRequirement.AnnotateOnly => true
-              case TargetBedRequirement.OverlapAny   => detector.overlapsAny(leftBreakpoint) || detector.overlapsAny(rightBreakpoint)
-              case TargetBedRequirement.OverlapBoth  => detector.overlapsAny(leftBreakpoint) && detector.overlapsAny(rightBreakpoint)
+        val filteredEvidences = targets match {
+          case None           => evidences
+          case Some(detector) =>
+            evidences.filter { ev =>
+              val leftBreakpoint = ev.breakpoint.leftInterval(source.dict)
+              val rightBreakpoint = ev.breakpoint.rightInterval(source.dict)
+              targetsBedRequirement match {
+                case TargetBedRequirement.AnnotateOnly => true
+                case TargetBedRequirement.OverlapAny   => detector.overlapsAny(leftBreakpoint) || detector.overlapsAny(rightBreakpoint)
+                case TargetBedRequirement.OverlapBoth  => detector.overlapsAny(leftBreakpoint) && detector.overlapsAny(rightBreakpoint)
+              }
             }
-          }
         }
 
         // Update the tracker
@@ -214,22 +216,22 @@ class SvPileup
     val breakpoints = tracker.breakpoints.toIndexedSeq.sortWith(Breakpoint.PairedOrdering.lt)
 
     breakpoints.foreach { bp =>
-      val leftTargets  = targets.map(_.getOverlaps(bp.leftInterval(dict)).map(_.getName).toSeq.sorted.mkString(","))
-      val rightTargets = targets.map(_.getOverlaps(bp.rightInterval(dict)).map(_.getName).toSeq.sorted.mkString(","))
+      val leftTargets  = targets.map(_.getOverlaps(bp.leftInterval(dict)).map(_.getName).toSeq.sorted.distinct.mkString(","))
+      val rightTargets = targets.map(_.getOverlaps(bp.rightInterval(dict)).map(_.getName).toSeq.sorted.distinct.mkString(","))
       val info         = tracker(bp)
       val metric       = BreakpointPileup(
-        id           = info.id.toString,
-        left_contig  = dict(bp.leftRefIndex).name,
-        left_pos     = bp.leftPos,
-        left_strand  = if (bp.leftPositive) '+' else '-',
-        right_contig = dict(bp.rightRefIndex).name,
-        right_pos    = bp.rightPos,
-        right_strand = if (bp.rightPositive) '+' else '-',
-        split_reads  = info.splitRead,
-        read_pairs   = info.readPair,
-        total        = info.total,
-        left_target  = leftTargets,
-        right_target = rightTargets
+        id            = info.id.toString,
+        left_contig   = dict(bp.leftRefIndex).name,
+        left_pos      = bp.leftPos,
+        left_strand   = if (bp.leftPositive) '+' else '-',
+        right_contig  = dict(bp.rightRefIndex).name,
+        right_pos     = bp.rightPos,
+        right_strand  = if (bp.rightPositive) '+' else '-',
+        split_reads   = info.splitRead,
+        read_pairs    = info.readPair,
+        total         = info.total,
+        left_targets  = leftTargets,
+        right_targets = rightTargets
       )
 
       writer.write(metric)
