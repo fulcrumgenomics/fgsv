@@ -22,6 +22,8 @@ import com.fulcrumgenomics.util.Metric
  * @param read_pairs    the number of templates/inserts with read-pair alignments (and without split-read alignments)
  *                      that identified this breakpoint.
  * @param total         the total number of templates/inserts that identified this breakpoint
+ * @param left_targets  the comma-delimited list of target names overlapping the left breakpoint
+ * @param right_targets the comma-delimited list of target names overlapping the right breakpoint
  */
 case class BreakpointPileup(id: String,
                             left_contig: String,
@@ -32,12 +34,16 @@ case class BreakpointPileup(id: String,
                             right_strand: Char,
                             split_reads: Int,
                             read_pairs: Int,
-                            total: Int
+                            total: Int,
+                            left_targets: Option[String] = None,
+                            right_targets: Option[String] = None
                            ) extends Metric {
 
   override def toString(): String = f"$id|$left_contig:$left_pos($left_strand)/" +
     f"$right_contig:$right_pos($right_strand)|" +
-    f"$split_reads,$read_pairs,$total"
+    f"$split_reads,$read_pairs,$total" +
+    f",${left_targets.map(_.replace(',', ';')).getOrElse("")}" +
+    f",${right_targets.map(_.replace(',', ';')).getOrElse("")}"
 
   lazy val contigOrientation: BreakpointContigOrientation = BreakpointContigOrientation(this)
 

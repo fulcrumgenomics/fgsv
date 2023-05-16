@@ -1,6 +1,6 @@
 package com.fulcrumgenomics.sv.tools
 
-import com.fulcrumgenomics.FgBioDef.{FilePath, PathPrefix, PathToBam, SafelyClosable, yieldAndThen}
+import com.fulcrumgenomics.FgBioDef.{FgBioEnum, FilePath, PathPrefix, PathToBam, SafelyClosable, yieldAndThen, _}
 import com.fulcrumgenomics.bam.api.{SamSource, SamWriter}
 import com.fulcrumgenomics.bam.{Bams, Template}
 import com.fulcrumgenomics.commons.io.PathUtil
@@ -8,13 +8,33 @@ import com.fulcrumgenomics.commons.util.LazyLogging
 import com.fulcrumgenomics.fasta.SequenceDictionary
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.sv.EvidenceType._
+import com.fulcrumgenomics.sv._
 import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
-import com.fulcrumgenomics.sv.{AlignedSegment, Breakpoint, BreakpointEvidence, BreakpointPileup, EvidenceType}
 import com.fulcrumgenomics.util.{Io, Metric, ProgressLogger}
+import enumeratum.EnumEntry
 import htsjdk.samtools.SAMFileHeader.{GroupOrder, SortOrder}
+import htsjdk.samtools.util.OverlapDetector
+import htsjdk.tribble.bed.BEDFeature
 
 import scala.collection.immutable.IndexedSeq
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
+
+/** An enumeration over how to utilize the input target BED file if given. */
+sealed trait TargetBedRequirement extends EnumEntry
+
+/** An enumeration over how to utilize the input target BED file if given. */
+object TargetBedRequirement extends FgBioEnum[TargetBedRequirement] {
+  /** Annotate the breakpionts only. */
+  case object AnnotateOnly extends TargetBedRequirement
+  /** Keep only breakpoints where at least one side overlaps at least one the targets. */
+  case object OverlapAny extends TargetBedRequirement
+  /** Keep only breakpoints where both sides overlap at least one of the targets. */
+  case object OverlapBoth extends TargetBedRequirement
+
+  override val values: immutable.IndexedSeq[TargetBedRequirement] = findValues
+
+  type Requirement = TargetBedRequirement
+}
 
 
 @clp(group=ClpGroups.All, description=
@@ -94,7 +114,10 @@ class SvPileup
  @arg(flag='b', doc="The minimum # of uncovered query bases needed to add a supplemental alignment") minUniqueBasesToAdd: Int = 20,
  @arg(flag='s', doc="""
    |The number of bases of slop to allow when determining which records to track for the left or right
-   |side of an aligned segment when merging segments.""") slop: Int = 5
+   |side of an aligned segment when merging segments.""") slop: Int = 5,
+ @arg(flag='t', doc="Optional bed file of target regions") targetsBed: Option[FilePath] = None,
+ @arg(flag='T', doc="Requirement on if each side of the breakpoint must overlap a target.  Will always annotate each side of the breakpoint.")
+ targetsBedRequirement: TargetBedRequirement.Requirement = TargetBedRequirement.AnnotateOnly
 ) extends SvTool {
 
   import SvPileup._
@@ -113,6 +136,7 @@ class SvPileup
     val bamOut    = SamWriter(PathUtil.pathTo(s"$output.bam"), header=outHeader)
     val progress  = new ProgressLogger(logger, noun="templates")
     val tracker   = new BreakpointTracker()
+    val targets   = targetsBed.map(Intervals.overlapDetectorFrom)
 
     Bams.templateIterator(source)
       .tapEach(t => progress.record(t.allReads.next()))
@@ -127,11 +151,25 @@ class SvPileup
           slop                     = slop
         )
 
+        val filteredEvidences = targets match {
+          case None           => evidences
+          case Some(detector) =>
+            evidences.filter { ev =>
+              val leftBreakpoint = ev.breakpoint.leftInterval(source.dict)
+              val rightBreakpoint = ev.breakpoint.rightInterval(source.dict)
+              targetsBedRequirement match {
+                case TargetBedRequirement.AnnotateOnly => true
+                case TargetBedRequirement.OverlapAny   => detector.overlapsAny(leftBreakpoint) || detector.overlapsAny(rightBreakpoint)
+                case TargetBedRequirement.OverlapBoth  => detector.overlapsAny(leftBreakpoint) && detector.overlapsAny(rightBreakpoint)
+              }
+            }
+        }
+
         // Update the tracker
-        evidences.foreach { ev => tracker.count(ev.breakpoint, ev.evidence) }
+        filteredEvidences.foreach { ev => tracker.count(ev.breakpoint, ev.evidence) }
 
         // Optionally write the reads to a BAM
-        maybeWriteTemplate(template, evidences, tracker, bamOut)
+        maybeWriteTemplate(template, filteredEvidences, tracker, bamOut)
       }
 
     progress.logLast()
@@ -139,7 +177,7 @@ class SvPileup
     bamOut.close()
 
     // Write the results
-    writeBreakpoints(path=PathUtil.pathTo(s"$output.txt"), tracker=tracker, dict=source.dict)
+    writeBreakpoints(path=PathUtil.pathTo(s"$output.txt"), tracker=tracker, dict=source.dict, targets=targets)
   }
 
   /** Annotates the reads for the given template and writes them to the writer if provided.
@@ -172,23 +210,28 @@ class SvPileup
   /** Write the breakpoints to a file. */
   private def writeBreakpoints(path: FilePath,
                                tracker: BreakpointTracker,
-                               dict: SequenceDictionary): Unit = {
+                               dict: SequenceDictionary,
+                               targets: Option[OverlapDetector[BEDFeature]]): Unit = {
     val writer      = Metric.writer[BreakpointPileup](path)
     val breakpoints = tracker.breakpoints.toIndexedSeq.sortWith(Breakpoint.PairedOrdering.lt)
 
     breakpoints.foreach { bp =>
-      val info   = tracker(bp)
-      val metric = BreakpointPileup(
-        id           = info.id.toString,
-        left_contig  = dict(bp.leftRefIndex).name,
-        left_pos     = bp.leftPos,
-        left_strand  = if (bp.leftPositive) '+' else '-',
-        right_contig = dict(bp.rightRefIndex).name,
-        right_pos    = bp.rightPos,
-        right_strand = if (bp.rightPositive) '+' else '-',
-        split_reads  = info.splitRead,
-        read_pairs   = info.readPair,
-        total        = info.total,
+      val leftTargets  = targets.map(_.getOverlaps(bp.leftInterval(dict)).map(_.getName).toSeq.sorted.distinct.mkString(","))
+      val rightTargets = targets.map(_.getOverlaps(bp.rightInterval(dict)).map(_.getName).toSeq.sorted.distinct.mkString(","))
+      val info         = tracker(bp)
+      val metric       = BreakpointPileup(
+        id            = info.id.toString,
+        left_contig   = dict(bp.leftRefIndex).name,
+        left_pos      = bp.leftPos,
+        left_strand   = if (bp.leftPositive) '+' else '-',
+        right_contig  = dict(bp.rightRefIndex).name,
+        right_pos     = bp.rightPos,
+        right_strand  = if (bp.rightPositive) '+' else '-',
+        split_reads   = info.splitRead,
+        read_pairs    = info.readPair,
+        total         = info.total,
+        left_targets  = leftTargets,
+        right_targets = rightTargets
       )
 
       writer.write(metric)

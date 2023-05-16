@@ -4,14 +4,13 @@ import com.fulcrumgenomics.FgBioDef.{FilePath, PathToBam}
 import com.fulcrumgenomics.bam.api.{QueryType, SamRecord, SamSource}
 import com.fulcrumgenomics.commons.util.LazyLogging
 import com.fulcrumgenomics.sopt.{arg, clp}
-import com.fulcrumgenomics.sv.BreakpointPileup
 import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
 import com.fulcrumgenomics.sv.tools.AggregateSvPileup.PileupGroup
 import com.fulcrumgenomics.sv.tools.BreakpointCategory.BreakpointCategory
+import com.fulcrumgenomics.sv.{BreakpointPileup, Intervals}
 import com.fulcrumgenomics.util.{Io, Metric}
 import htsjdk.samtools.util.{Interval, OverlapDetector}
-import htsjdk.tribble.bed.{BEDCodec, BEDFeature}
-import htsjdk.tribble.AbstractFeatureReader
+import htsjdk.tribble.bed.BEDFeature
 
 import scala.collection.mutable
 
@@ -79,14 +78,7 @@ class AggregateSvPileup
     val samSource: Option[SamSource] = bam.map(SamSource(_))
 
     // Read targets from bed file and build OverlapDetector
-    val targets: Option[OverlapDetector[BEDFeature]] = targetsBed match {
-      case None => None
-      case Some(bed) =>
-        val bedReader = AbstractFeatureReader.getFeatureReader(bed.toAbsolutePath.toString, new BEDCodec(), false)
-        val bedFeatures: java.util.List[BEDFeature] = bedReader.iterator().toList
-        bedReader.close()
-        Some(OverlapDetector.create(bedFeatures))
-    }
+    val targets: Option[OverlapDetector[BEDFeature]] = targetsBed.map(Intervals.overlapDetectorFrom)
 
     // Open output writer
     val writer = Metric.writer[AggregatedBreakpointPileup](output)
