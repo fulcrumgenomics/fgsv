@@ -39,15 +39,29 @@ trait ReleaseModule extends JavaModule {
   /** Get the commit shorthash at the HEAD of this branch .*/
   private def shortHash: String = gitHead.take(7)
 
+  /** The current tag of the currently checked out commit, if any. */
+  def currentTag: Try[String] = Try(git("describe", "--exact-match", "--tags", "--always", gitHead))
+
+  /** The hash of the last tagged commit. */
+  private def hashOfLastTag: Try[String] = Try(git("rev-list", "--tags", "--max-count=1"))
+
+  /** The last tag of the currently checked out branch, if any. */
+  def lastTag: Try[String] = hashOfLastTag match {
+    case Success(hash) => Try(git("describe", "--abbrev=0", "--tags", "--always", hash))
+    case Failure(e)    => Failure(e)
+  }
+
   /** If the Git repository is left in a dirty state. */
   private def dirty: Boolean = git("status", "--porcelain").nonEmpty
 
-  private def today: String = new SimpleDateFormat("yyyyMMdd").format(new Date())
-
   /** The implementation version. */
-  private def implementationVersion = T input {
-    val prefix = s"${today}-${shortHash}"
-    if (dirty) s"${prefix}-dirty" else prefix
+  private def implementationVersion = T.input {
+    val prefix: String = (currentTag, lastTag) match {
+      case (Success(_currentTag), _)       => _currentTag
+      case (Failure(_), Success(_lastTag)) => _lastTag + "-" + shortHash
+      case (_, _)                          => shortHash
+    }
+    prefix + (if (dirty) "-dirty" else "")
   }
 
   /** The version string `Target`. */
@@ -90,8 +104,8 @@ object tools extends CommonModule with PublishModule with ReleaseModule {
   def ivyDeps = Agg(
     ivy"org.scala-lang:scala-compiler:${scalaVersion()}",
     ivy"com.fulcrumgenomics:fgbio_2.13:1.5.0".excludeOrg(orgsToExclude:_*),
-	ivy"org.xerial.snappy:snappy-java:1.1.8.4"
-    )
+    ivy"org.xerial.snappy:snappy-java:1.1.8.4"
+  )
 
   object test extends Tests {
     def ivyDeps = Agg(ivy"org.scalatest::scalatest:3.1.0")
