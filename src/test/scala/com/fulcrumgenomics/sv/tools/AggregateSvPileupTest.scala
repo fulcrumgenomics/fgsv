@@ -380,6 +380,8 @@ class AggregateSvPileupTest extends UnitSpec {
       right_pileups  = PositionList(300, 400, 425, 500),
       left_frequency = Some(8d/16),
       right_frequency = Some(8d/8),
+      left_templates = Some(16),
+      right_templates = Some(8),
       left_overlaps_target = true,
       right_overlaps_target = true,
       left_targets = Some("target-1"),
@@ -404,6 +406,8 @@ class AggregateSvPileupTest extends UnitSpec {
       right_pileups  = PositionList(401),
       left_frequency = Some(2d/2),
       right_frequency = Some(2d/8),
+      left_templates = Some(2),
+      right_templates = Some(8),
       left_overlaps_target = false,
       right_overlaps_target = false,  // There is a BED feature 401-402; BED is 0-based half open
     )
@@ -439,6 +443,8 @@ class AggregateSvPileupTest extends UnitSpec {
       right_pileups  = PositionList(300, 400, 425, 500),
       left_frequency = Some(8d/16),
       right_frequency = Some(8d/8),
+      left_templates = Some(16),
+      right_templates = Some(8),
       left_targets   = Some("1,2,5")
     )
 

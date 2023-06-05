@@ -357,7 +357,7 @@ case class AggregatedBreakpointPileup(id: String,
         }
     }
     val leftResult  = frequency_and_count(left_contig, left_pileups, left_min_pos, left_max_pos)
-    val rightResult = frequency_and_count(left_contig, left_pileups, left_min_pos, left_max_pos)
+    val rightResult = frequency_and_count(right_contig, right_pileups, right_min_pos, right_max_pos)
     this.copy(
       left_frequency  = leftResult.map(_._1),
       right_frequency = rightResult.map(_._1),
