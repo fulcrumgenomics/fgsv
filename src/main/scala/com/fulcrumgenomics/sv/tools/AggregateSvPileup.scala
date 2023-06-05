@@ -435,7 +435,7 @@ case class AggregatedBreakpointPileup(id: String,
     def annotations(contig: String, minPos: Int , maxPos: Int): (Boolean, Option[String]) = {
       targets match {
         case None => (false, None)
-        case Some(detector) => {
+        case Some(detector) =>
           val span = new Interval(contig, minPos, maxPos)
           if (detector.overlapsAny(span)) {
             val overlaps = detector.getOverlaps(span)
@@ -443,11 +443,10 @@ case class AggregatedBreakpointPileup(id: String,
           } else {
             (false, None)
           }
-        }
       }
     }
 
-    val (leftOverlaps, leftTargets) = annotations(left_contig, left_min_pos, left_max_pos)
+    val (leftOverlaps, leftTargets)   = annotations(left_contig, left_min_pos, left_max_pos)
     val (rightOverlaps, rightTargets) = annotations(right_contig, right_min_pos, right_max_pos)
     this.copy(
       left_overlaps_target  = leftOverlaps,
