@@ -431,18 +431,29 @@ case class AggregatedBreakpointPileup(id: String,
    * @param targets Optional OverlapDetector for target intervals. If None, target overlap fields are set to false.
    */
   def addTargetOverlap(targets: Option[OverlapDetector[BEDFeature]]): AggregatedBreakpointPileup = {
-    val left_targets  = targets.map(_.getOverlaps(new Interval(left_contig, left_min_pos, left_max_pos)))
-      .map(_.map(_.getName).toSeq.sorted.distinct.mkString(","))
-      .flatMap(s => if (s.isEmpty) None else Some(s))
-    val right_targets = targets.map(_.getOverlaps(new Interval(right_contig, right_min_pos, right_max_pos)))
-      .map(_.map(_.getName).toSeq.sorted.distinct.mkString(","))
-      .flatMap(s => if (s.isEmpty) None else Some(s))
 
+    def annotations(contig: String, minPos: Int , maxPos: Int): (Boolean, Option[String]) = {
+      targets match {
+        case None => (false, None)
+        case Some(detector) => {
+          val span = new Interval(contig, minPos, maxPos)
+          if (detector.overlapsAny(span)) {
+            val overlaps = detector.getOverlaps(span)
+            (true, Some(overlaps.map(_.getName).toSeq.sorted.distinct.mkString(",")))
+          } else {
+            (false, None)
+          }
+        }
+      }
+    }
+
+    val (leftOverlaps, leftTargets) = annotations(left_contig, left_min_pos, left_max_pos)
+    val (rightOverlaps, rightTargets) = annotations(right_contig, right_min_pos, right_max_pos)
     this.copy(
-      left_overlaps_target = left_targets.nonEmpty,
-      right_overlaps_target = right_targets.nonEmpty,
-      left_targets = left_targets,
-      right_targets = right_targets
+      left_overlaps_target  = leftOverlaps,
+      right_overlaps_target = rightOverlaps,
+      left_targets          = leftTargets,
+      right_targets         = rightTargets
     )
   }
 

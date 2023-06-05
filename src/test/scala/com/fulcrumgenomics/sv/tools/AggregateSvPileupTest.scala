@@ -405,6 +405,11 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val aggregatedPileups = runEndToEnd(pileups, bam = Some(bam), targets = Some(bed))
+
+    aggregatedPileups.foreach { p =>
+      println(s"Pileup ${p.id} ${p.left_targets.isEmpty} ${p.left_targets.contains("")}")
+    }
+
     aggregatedPileups should contain theSameElementsAs IndexedSeq(expAgg1, expAgg2)
 
   }
