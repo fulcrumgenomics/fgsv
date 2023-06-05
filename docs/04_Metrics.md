@@ -44,6 +44,8 @@ Aggregated cluster of breakpoint pileups
 |right_frequency|Option[Double]|Proportion of reads mapping at one of the right breakends that support a breakpoint|
 |left_overlaps_target|Boolean|True if the left aggregated region overlaps a target region|
 |right_overlaps_target|Boolean|True if the right aggregated region overlaps a target region|
+|left_targets|Option[String]|The comma-delimited list of target names overlapping the left breakpoint|
+|right_targets|Option[String]|The comma-delimited list of target names overlapping the right breakpoint|
 
 
 ### BreakpointPileup
