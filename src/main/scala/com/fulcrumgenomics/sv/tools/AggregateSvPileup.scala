@@ -432,9 +432,9 @@ case class AggregatedBreakpointPileup(id: String,
    */
   def addTargetOverlap(targets: Option[OverlapDetector[BEDFeature]]): AggregatedBreakpointPileup = {
 
-    def annotations(contig: String, minPos: Int , maxPos: Int): (Boolean, Option[String]) = {
+    def annotations(contig: String, minPos: Int , maxPos: Int, defaultTargets: Option[String] = None): (Boolean, Option[String]) = {
       targets match {
-        case None => (false, None)
+        case None => (false, defaultTargets)
         case Some(detector) =>
           val span = new Interval(contig, minPos, maxPos)
           if (detector.overlapsAny(span)) {
@@ -446,8 +446,8 @@ case class AggregatedBreakpointPileup(id: String,
       }
     }
 
-    val (leftOverlaps, leftTargets)   = annotations(left_contig, left_min_pos, left_max_pos)
-    val (rightOverlaps, rightTargets) = annotations(right_contig, right_min_pos, right_max_pos)
+    val (leftOverlaps, leftTargets)   = annotations(left_contig, left_min_pos, left_max_pos, this.left_targets)
+    val (rightOverlaps, rightTargets) = annotations(right_contig, right_min_pos, right_max_pos, this.right_targets)
     this.copy(
       left_overlaps_target  = leftOverlaps,
       right_overlaps_target = rightOverlaps,
