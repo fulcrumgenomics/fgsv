@@ -24,7 +24,7 @@ sealed trait TargetBedRequirement extends EnumEntry
 
 /** An enumeration over how to utilize the input target BED file if given. */
 object TargetBedRequirement extends FgBioEnum[TargetBedRequirement] {
-  /** Annotate the breakpionts only. */
+  /** Annotate the breakpoints only. */
   case object AnnotateOnly extends TargetBedRequirement
   /** Keep only breakpoints where at least one side overlaps at least one the targets. */
   case object OverlapAny extends TargetBedRequirement
