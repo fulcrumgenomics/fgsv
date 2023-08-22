@@ -42,8 +42,12 @@ Aggregated cluster of breakpoint pileups
 |right_pileups|PositionList|List of constituent right breakends|
 |left_frequency|Option[Double]|Proportion of templates mapping at one of the left breakends that support a breakpoint.                              If a template maps across multiple breakends, it is only counted once. If a template                              maps entirely between two breakends but does not overlap one, it is not counted. If two                              paired reads straddle a breakend, the template is counted as reading across the                              breakend. If two paired reads both overlap the same breakend, the template is counted                              once.|
 |right_frequency|Option[Double]|Proportion of reads mapping at one of the right breakends that support a breakpoint|
+|left_templates|Option[Int]|The total number of templates used for the denominator when calculating `left_frequency`.|
+|right_templates|Option[Int]|The total number of templates used for the denominator when calculating `right_frequency`.|
 |left_overlaps_target|Boolean|True if the left aggregated region overlaps a target region|
 |right_overlaps_target|Boolean|True if the right aggregated region overlaps a target region|
+|left_targets|Option[String]|The comma-delimited list of target names overlapping the left breakpoint|
+|right_targets|Option[String]|The comma-delimited list of target names overlapping the right breakpoint|
 
 
 ### BreakpointPileup

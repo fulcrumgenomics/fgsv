@@ -117,6 +117,7 @@ class AggregateSvPileupTest extends UnitSpec {
     split_reads  = 1,
     read_pairs   = 1,
     total        = 2,
+    left_targets = Some("1,2,5")
   )
 
   private val pileup_id8_1_500_plus_3_400_plus = BreakpointPileup(
@@ -210,7 +211,7 @@ class AggregateSvPileupTest extends UnitSpec {
 
   private val bed = makeTempFile("targets", ".bed")
   private val bedWriter = new BufferedWriter(new FileWriter(bed.toFile))
-  bedWriter.write("#header\nchr1\t400\t410\nchr3\t401\t402\n")
+  bedWriter.write("#header\nchr1\t400\t410\ttarget-1\nchr3\t401\t402\ttarget-2\n")
   bedWriter.flush()
   bedWriter.close()
 
@@ -288,6 +289,7 @@ class AggregateSvPileupTest extends UnitSpec {
       total          = 12,
       left_pileups   = PositionList(100, 200, 300, 400, 500, 600),
       right_pileups  = PositionList(100, 200, 200, 300, 400, 500),
+      left_targets   = Some("1,2,5")
     )
 
     // pileup_id222_1_100_plus_1_200_plus does not combine due to different chromosome
@@ -378,8 +380,12 @@ class AggregateSvPileupTest extends UnitSpec {
       right_pileups  = PositionList(300, 400, 425, 500),
       left_frequency = Some(8d/16),
       right_frequency = Some(8d/8),
+      left_templates = Some(16),
+      right_templates = Some(8),
       left_overlaps_target = true,
       right_overlaps_target = true,
+      left_targets = Some("target-1"),
+      right_targets = Some("target-2"),
     )
 
     val expAgg2 = AggregatedBreakpointPileup(
@@ -400,6 +406,8 @@ class AggregateSvPileupTest extends UnitSpec {
       right_pileups  = PositionList(401),
       left_frequency = Some(2d/2),
       right_frequency = Some(2d/8),
+      left_templates = Some(2),
+      right_templates = Some(8),
       left_overlaps_target = false,
       right_overlaps_target = false,  // There is a BED feature 401-402; BED is 0-based half open
     )
@@ -416,7 +424,6 @@ class AggregateSvPileupTest extends UnitSpec {
       pileup_id9_1_600_plus_3_500_plus,
       pileup_id10_1_525_plus_3_425_plus,
     )
-
 
     val expAgg = AggregatedBreakpointPileup(
       id             = "10_7_8_9",
@@ -436,6 +443,9 @@ class AggregateSvPileupTest extends UnitSpec {
       right_pileups  = PositionList(300, 400, 425, 500),
       left_frequency = Some(8d/16),
       right_frequency = Some(8d/8),
+      left_templates = Some(16),
+      right_templates = Some(8),
+      left_targets   = Some("1,2,5")
     )
 
     val aggregatedPileups = runEndToEnd(pileups, bam = Some(bam))
@@ -471,6 +481,8 @@ class AggregateSvPileupTest extends UnitSpec {
       right_frequency = None,
       left_overlaps_target = true,
       right_overlaps_target = true,
+      left_targets = Some("target-1"),
+      right_targets = Some("target-2"),
     )
 
     val aggregatedPileups = runEndToEnd(pileups, targets = Some(bed))

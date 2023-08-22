@@ -216,8 +216,8 @@ class SvPileup
     val breakpoints = tracker.breakpoints.toIndexedSeq.sortWith(Breakpoint.PairedOrdering.lt)
 
     breakpoints.foreach { bp =>
-      val leftTargets  = targets.map(_.getOverlaps(bp.leftInterval(dict)).map(_.getName).toSeq.sorted.distinct.mkString(","))
-      val rightTargets = targets.map(_.getOverlaps(bp.rightInterval(dict)).map(_.getName).toSeq.sorted.distinct.mkString(","))
+      val leftTargets  = targets.map(_.getOverlaps(bp.leftInterval(dict)).map(_.getName).toSeq.sorted.distinct.mkString(",")).flatMap(s => if (s.isEmpty) None else Some(s))
+      val rightTargets = targets.map(_.getOverlaps(bp.rightInterval(dict)).map(_.getName).toSeq.sorted.distinct.mkString(",")).flatMap(s => if (s.isEmpty) None else Some(s))
       val info         = tracker(bp)
       val metric       = BreakpointPileup(
         id            = info.id.toString,
