@@ -101,7 +101,11 @@ class AggregateSvPileup
       pileupClusters
         .map(AggregatedBreakpointPileup.apply)
         .map(_.calculateFrequency(samSource, flank, minBreakpointSupport, minFrequency))
-        .map(_.addTargetOverlap(targets))
+        .map { cluster => targets match {
+            case None => cluster
+            case Some(detector) => cluster.addTargetOverlap(detector)
+          }
+        }
         .foreach(writer.write)
     }
 
@@ -434,32 +438,22 @@ case class AggregatedBreakpointPileup(id: String,
   }
 
   /**
-   * Returns a new aggregated pileup with target overlap fields populated
+   * Returns a new aggregated pileup with target overlap fields populated.
+   *
+   * The existing *target fields are updated based on if the left and right breakends overlap any targets in the overlap
+   * detector.
+   *
    * @param targets Optional OverlapDetector for target intervals. If None, target overlap fields are set to false.
    */
-  def addTargetOverlap(targets: Option[OverlapDetector[BEDFeature]]): AggregatedBreakpointPileup = {
-
-    def annotations(contig: String, minPos: Int , maxPos: Int, defaultTargets: Option[String] = None): (Boolean, Option[String]) = {
-      targets match {
-        case None => (false, defaultTargets)
-        case Some(detector) =>
-          val span = new Interval(contig, minPos, maxPos)
-          if (detector.overlapsAny(span)) {
-            val overlaps = detector.getOverlaps(span)
-            (true, Some(overlaps.map(_.getName).toSeq.sorted.distinct.mkString(",")))
-          } else {
-            (false, None)
-          }
-      }
-    }
-
-    val (leftOverlaps, leftTargets)   = annotations(left_contig, left_min_pos, left_max_pos, this.left_targets)
-    val (rightOverlaps, rightTargets) = annotations(right_contig, right_min_pos, right_max_pos, this.right_targets)
+  def addTargetOverlap(targets: OverlapDetector[BEDFeature]): AggregatedBreakpointPileup = {
+    // Get the names of the targets that overlap the left and right breakends respectively.
+    val leftOverlapNames: Seq[String] = targets.getOverlaps(new Interval(left_contig, left_min_pos, left_max_pos)).map(_.getName).toSeq.sorted.distinct
+    val rightOverlapNames: Seq[String] = targets.getOverlaps(new Interval(right_contig, right_min_pos, right_max_pos)).map(_.getName).toSeq.sorted.distinct
     this.copy(
-      left_overlaps_target  = leftOverlaps,
-      right_overlaps_target = rightOverlaps,
-      left_targets          = leftTargets,
-      right_targets         = rightTargets
+      left_overlaps_target  = leftOverlapNames.nonEmpty,
+      right_overlaps_target = rightOverlapNames.nonEmpty,
+      left_targets          = if (leftOverlapNames.isEmpty) None else Some(leftOverlapNames.mkString(",")),
+      right_targets         = if (rightOverlapNames.isEmpty) None else Some(rightOverlapNames.mkString(",")),
     )
   }
 
