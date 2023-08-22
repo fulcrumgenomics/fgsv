@@ -245,6 +245,8 @@ object BreakpointCategory extends Enumeration {
  *                              breakend. If two paired reads both overlap the same breakend, the template is counted
  *                              once.
  * @param right_frequency       Proportion of reads mapping at one of the right breakends that support a breakpoint
+ * @param left_templates        The total number of templates used for the denominator when calculating `left_frequency`.
+ * @param right_templates       The total number of templates used for the denominator when calculating `right_frequency`.
  * @param left_overlaps_target  True if the left aggregated region overlaps a target region
  * @param right_overlaps_target True if the right aggregated region overlaps a target region
  * @param left_targets  the comma-delimited list of target names overlapping the left breakpoint
@@ -267,6 +269,8 @@ case class AggregatedBreakpointPileup(id: String,
                                       right_pileups: PositionList,
                                       left_frequency: Option[Double] = None,
                                       right_frequency: Option[Double] = None,
+                                      left_templates: Option[Int] = None,
+                                      right_templates: Option[Int] = None,
                                       left_overlaps_target: Boolean = false,
                                       right_overlaps_target: Boolean = false,
                                       left_targets: Option[String] = None,
@@ -335,7 +339,7 @@ case class AggregatedBreakpointPileup(id: String,
                          minFrequency: Double):
   AggregatedBreakpointPileup = {
 
-    def frequency(contig: String, pileups: PositionList, minPos: Int, maxPos: Int): Option[Double] = source match {
+    def frequency_and_count(contig: String, pileups: PositionList, minPos: Int, maxPos: Int): Option[(Double, Int)] = source match {
       case None => None
       case Some(src) =>
         val numOverlap = numOverlappingTemplates(
@@ -349,13 +353,16 @@ case class AggregatedBreakpointPileup(id: String,
         )
         numOverlap match {
           case None => None
-          case Some(n) => Some(total.toDouble / n)
+          case Some(n) => Some(total.toDouble / n, n)
         }
     }
-
+    val leftResult  = frequency_and_count(left_contig, left_pileups, left_min_pos, left_max_pos)
+    val rightResult = frequency_and_count(right_contig, right_pileups, right_min_pos, right_max_pos)
     this.copy(
-      left_frequency = frequency(left_contig, left_pileups, left_min_pos, left_max_pos),
-      right_frequency = frequency(right_contig, right_pileups, right_min_pos, right_max_pos),
+      left_frequency  = leftResult.map(_._1),
+      right_frequency = rightResult.map(_._1),
+      left_templates  = leftResult.map(_._2),
+      right_templates = rightResult.map(_._2),
     )
   }
 
