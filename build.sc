@@ -78,7 +78,7 @@ object tools extends CommonModule with PublishModule with ReleaseModule {
   def mainClass = Some("com.fulcrumgenomics.sv.cmdline.SvMain")
   def artifactName = "fgsv"
   def gitHash = Process("git rev-parse --short HEAD").lineStream.head
-  def publishVersion = s"0.0.3-${gitHash}-SNAPSHOT"
+  def publishVersion = "0.0.3"
   def pomSettings = PomSettings(
     description = artifactName(),
     organization = "com.fulcrumgenomics",
