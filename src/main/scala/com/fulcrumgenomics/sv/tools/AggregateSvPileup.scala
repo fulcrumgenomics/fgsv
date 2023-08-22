@@ -284,23 +284,24 @@ case class AggregatedBreakpointPileup(id: String,
   /** Returns the IDs of constituent breakpoints */
   def pileupIds(): Seq[String] = id.split("_").toSeq.sorted
 
+  /** Combines the comma-delimited list of target strings when aggregating the `left_targets` and `right_target` fields. */
+  private def combineTargetStrings(first: Option[String], second: Option[String]): Option[String] = {
+    (first, second) match {
+      case (_, None) => first
+      case (None, _) => second
+      case (Some(_first), Some(_second)) =>
+        val firstList  = _first.split(',')
+        val secondList = _second.split(',')
+        Some((firstList ++ secondList).sorted.distinct.mkString(","))
+    }
+  }
+
   /** Returns a new aggregated pileup with the given pileup added */
   def add(pileup: BreakpointPileup): AggregatedBreakpointPileup = {
     assert(pileup.left_contig == left_contig)
     assert(pileup.right_contig == right_contig)
     assert(pileup.left_strand == left_strand)
     assert(pileup.right_strand == right_strand)
-
-    val left_targets = (this.left_targets, pileup.left_targets) match {
-      case (_, None) => this.left_targets
-      case (None, _) => pileup.left_targets
-      case (Some(this_left), Some(pileup_left)) => Some(f"${this_left},${pileup_left}")
-    }
-    val right_targets = (this.right_targets, pileup.right_targets) match {
-      case (_, None) => this.right_targets
-      case (None, _) => pileup.right_targets
-      case (Some(this_right), Some(pileup_right)) => Some(f"${this_right},${pileup_right}")
-    }
 
     AggregatedBreakpointPileup(
       id              = pileupIds().appended(pileup.id).sorted.mkString("_"),
@@ -318,8 +319,8 @@ case class AggregatedBreakpointPileup(id: String,
       total           = total + pileup.total,
       left_pileups    = left_pileups.appended(pileup.left_pos),
       right_pileups   = right_pileups.appended(pileup.right_pos),
-      left_targets    = left_targets,
-      right_targets   = right_targets,
+      left_targets    = combineTargetStrings(this.left_targets, pileup.left_targets),
+      right_targets   = combineTargetStrings(this.right_targets, pileup.right_targets),
     )
   }
 
