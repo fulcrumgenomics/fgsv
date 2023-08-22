@@ -4,7 +4,7 @@ title: fgsv tools
 
 # fgsv tools
 
-The following tools are available in fgsv version 0.0.2.
+The following tools are available in fgsv version 0.0.2-659d8c9.
 
 ## All tools
 
