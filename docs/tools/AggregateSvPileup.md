@@ -29,7 +29,7 @@ by the count of the union of templates that cross any constituent breakends. In 
 straddle a breakend are considered to cross the breakend.
 
 If a BED file of target regions is provided, each aggregated pileup is annotated with whether its left and
-right sides overlap a target region.  Additionally, the names of the overlapping target regions will be copied
+right sides overlap a target region.  Additionally, the names of the overlapping target regions will be
 annotated, overwriting any values from the `SvPileup` input.  If no target regions are provided, then the names
 of the overlapping target regions are copied from the `SvPiluep` input (if present).
 

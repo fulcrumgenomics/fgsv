@@ -11,7 +11,7 @@ import com.fulcrumgenomics.sv.{BreakpointPileup, Intervals}
 import com.fulcrumgenomics.util.{Io, Metric}
 import htsjdk.samtools.util.{Interval, OverlapDetector}
 import htsjdk.tribble.bed.BEDFeature
-import com.fulcrumgenomics.FgBioDef.javaIterableToIterator
+import com.fulcrumgenomics.FgBioDef._
 import scala.collection.mutable
 
 
@@ -39,7 +39,7 @@ import scala.collection.mutable
     |straddle a breakend are considered to cross the breakend.
     |
     |If a BED file of target regions is provided, each aggregated pileup is annotated with whether its left and
-    |right sides overlap a target region.  Additionally, the names of the overlapping target regions will be copied
+    |right sides overlap a target region.  Additionally, the names of the overlapping target regions will be
     |annotated, overwriting any values from the `SvPileup` input.  If no target regions are provided, then the names
     |of the overlapping target regions are copied from the `SvPiluep` input (if present).
     |
@@ -249,8 +249,8 @@ object BreakpointCategory extends Enumeration {
  * @param right_templates       The total number of templates used for the denominator when calculating `right_frequency`.
  * @param left_overlaps_target  True if the left aggregated region overlaps a target region
  * @param right_overlaps_target True if the right aggregated region overlaps a target region
- * @param left_targets  the comma-delimited list of target names overlapping the left breakpoint
- * @param right_targets the comma-delimited list of target names overlapping the right breakpoint
+ * @param left_targets          the comma-delimited list of target names overlapping the left breakpoint
+ * @param right_targets         the comma-delimited list of target names overlapping the right breakpoint
  */
 case class AggregatedBreakpointPileup(id: String,
                                       category: BreakpointCategory,
