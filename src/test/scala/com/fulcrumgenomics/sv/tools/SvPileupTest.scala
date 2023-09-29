@@ -5,6 +5,7 @@ import com.fulcrumgenomics.alignment.Cigar
 import com.fulcrumgenomics.bam.Template
 import com.fulcrumgenomics.bam.api.{SamRecord, SamWriter}
 import com.fulcrumgenomics.commons.io.PathUtil
+import com.fulcrumgenomics.fasta.{SequenceDictionary, SequenceMetadata, Topology}
 import com.fulcrumgenomics.sv.EvidenceType.{ReadPair, SplitRead}
 import com.fulcrumgenomics.sv.SegmentOrigin.{Both, ReadOne, ReadTwo}
 import com.fulcrumgenomics.sv._
@@ -109,7 +110,12 @@ class SvPileupTest extends UnitSpec {
   //////////////////////////////////////////////////////////////////////////////
   // Objects and functions used in testing findBreakpoint()
   //////////////////////////////////////////////////////////////////////////////
-  private val builder = new SamBuilder(readLength=100)
+  private val builder = {
+    val seqs = (Range.inclusive(1, 22) ++ Seq("X", "Y")).map { chr =>
+      SequenceMetadata(name="chr" + chr, length=200e6.toInt)
+    } ++ Seq(SequenceMetadata(name="chrM", length=16000, topology = Some(Topology.Circular)))
+    new SamBuilder(readLength=100, sd=Some(SequenceDictionary(seqs:_*)))
+  }
   import SamBuilder.{Minus, Plus, Strand}
 
   /** Construct a read/rec with the information necessary for breakpoint detection. */
@@ -293,6 +299,24 @@ class SvPileupTest extends UnitSpec {
       bp(SplitRead, "chr2", 500, Minus, "chr3", 900, Plus, recs(1), recs(2)),
     )
   }
+
+  it should "not call a breakpoint from a read pair on opposite sides of a circular contig origin" in {
+    val template = t(
+      r("chrM", 15800, Plus,  r=1, cigar="100M", supp=false),
+      r("chrM", 100,   Minus, r=2, cigar="100M", supp=false),
+    )
+    call(template) should contain theSameElementsInOrderAs IndexedSeq.empty
+  }
+
+  it should "not call a breakpoint from a split read that spans a circular contig origin" in {
+    val template = t(
+      r("chrM", 15951, Plus,  r=1, cigar="50M50S",  supp=false),
+      r("chrM", 1,     Plus,  r=1, cigar="50S50M",  supp=true),
+      r("chrM", 300,   Minus, r=2, cigar="100M", supp=false),
+    )
+    call(template) should contain theSameElementsInOrderAs IndexedSeq.empty
+  }
+
 
   it should "call a breakpoint from a single-end split read with no mate" in {
     val r1Half1 = r("chr1", 100, Plus,  r=0, cigar="50M50S", supp=false)
