@@ -47,35 +47,35 @@ class SvPileupTest extends UnitSpec {
     // any overlapping segments or jumping backwards between segments is indicative of a breakpoint
 
     // What you might get from a read pair with a gap between the two reads
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=150) shouldBe false
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=150, dict=builder.dict) shouldBe false
 
     // same segment but jumping backwards
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=earlier, maxWithinReadDistance=5, maxBetweenReadDistance=150) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=earlier, maxWithinReadDistance=5, maxBetweenReadDistance=150, dict=builder.dict) shouldBe true
 
     // overlapping segments but still jumping backwards
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=overlap, maxWithinReadDistance=5, maxBetweenReadDistance=150) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=overlap, maxWithinReadDistance=5, maxBetweenReadDistance=150, dict=builder.dict) shouldBe true
 
     // non-overlapping segments from the same read, testing various values for maxWithinReadDistance
     // Note that the inner distance between two blocks is defined as `later.start - earlier.end`, so for
     // this case that is 150-100 = 50, so a breakpoint should be called when the maxWithinReadDistance < 50.
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance= 5, maxBetweenReadDistance=150) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=25, maxBetweenReadDistance=150) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=48, maxBetweenReadDistance=150) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=49, maxBetweenReadDistance=150) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=50, maxBetweenReadDistance=150) shouldBe false
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=51, maxBetweenReadDistance=150) shouldBe false
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance= 5, maxBetweenReadDistance=150, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=25, maxBetweenReadDistance=150, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=48, maxBetweenReadDistance=150, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=49, maxBetweenReadDistance=150, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=50, maxBetweenReadDistance=150, dict=builder.dict) shouldBe false
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later, maxWithinReadDistance=51, maxBetweenReadDistance=150, dict=builder.dict) shouldBe false
 
     // non-overlapping segments where the later segment is "both" so indicates a split read breakpoint
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=Both), maxWithinReadDistance= 5, maxBetweenReadDistance=150) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=Both), maxWithinReadDistance=25, maxBetweenReadDistance=150) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=Both), maxWithinReadDistance=49, maxBetweenReadDistance=150) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=Both), maxWithinReadDistance=75, maxBetweenReadDistance=150) shouldBe false
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=Both), maxWithinReadDistance= 5, maxBetweenReadDistance=150, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=Both), maxWithinReadDistance=25, maxBetweenReadDistance=150, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=Both), maxWithinReadDistance=49, maxBetweenReadDistance=150, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=Both), maxWithinReadDistance=75, maxBetweenReadDistance=150, dict=builder.dict) shouldBe false
 
     // non-overlapping segments where the later segment is "Read2" so between read distance should be used
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=5 ) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=25) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=49) shouldBe true
-    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=75) shouldBe false
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=5, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=25, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=49, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(seg1=earlier, seg2=later.copy(origin=ReadTwo), maxWithinReadDistance=5, maxBetweenReadDistance=75, dict=builder.dict) shouldBe false
   }
 
   "SvPileup.isIntraContigBreakpoint" should "identify when two segments flip strand" in {
@@ -88,22 +88,22 @@ class SvPileupTest extends UnitSpec {
     val r2 = f2.copy(positiveStrand=false)
 
     // Simple tests that should not call breakpoints
-    SvPileup.isIntraContigBreakpoint(f1, f2, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe false
-    SvPileup.isIntraContigBreakpoint(r2, r1, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe false
+    SvPileup.isIntraContigBreakpoint(f1, f2, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe false
+    SvPileup.isIntraContigBreakpoint(r2, r1, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe false
 
     // Now what if we make them different reads
-    SvPileup.isIntraContigBreakpoint(f1, f2.copy(origin=ReadTwo), maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe false
-    SvPileup.isIntraContigBreakpoint(r2, r1.copy(origin=ReadTwo), maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe false
+    SvPileup.isIntraContigBreakpoint(f1, f2.copy(origin=ReadTwo), maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe false
+    SvPileup.isIntraContigBreakpoint(r2, r1.copy(origin=ReadTwo), maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe false
 
     // But any combination on different strands should yield a breakpoint
-    SvPileup.isIntraContigBreakpoint(f1, r1, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe true
-    SvPileup.isIntraContigBreakpoint(f1, r2, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe true
-    SvPileup.isIntraContigBreakpoint(f2, r1, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe true
-    SvPileup.isIntraContigBreakpoint(f2, r2, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe true
-    SvPileup.isIntraContigBreakpoint(r1, f1, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe true
-    SvPileup.isIntraContigBreakpoint(r1, f2, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe true
-    SvPileup.isIntraContigBreakpoint(r2, f1, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe true
-    SvPileup.isIntraContigBreakpoint(r2, f2, maxWithinReadDistance=500, maxBetweenReadDistance=500) shouldBe true
+    SvPileup.isIntraContigBreakpoint(f1, r1, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(f1, r2, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(f2, r1, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(f2, r2, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(r1, f1, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(r1, f2, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(r2, f1, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe true
+    SvPileup.isIntraContigBreakpoint(r2, f2, maxWithinReadDistance=500, maxBetweenReadDistance=500, dict=builder.dict) shouldBe true
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -136,7 +136,8 @@ class SvPileupTest extends UnitSpec {
       template                       = t,
       maxWithinReadDistance          = 5,
       maxReadPairInnerDistance       = 1000,
-      minUniqueBasesToAdd            = 10
+      minUniqueBasesToAdd            = 10,
+      dict                           = builder.dict
     )
 
   /** Short hand for constructing a BreakpointEvidence. */
