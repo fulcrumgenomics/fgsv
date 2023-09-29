@@ -316,7 +316,7 @@ object SvPileup extends LazyLogging {
    *                            adding them.
    * @param slop                the number of bases of slop to allow when determining which records to track for the
    *                            left or right side of an aligned segment when merging segments
-  * @param dict                the sequence dictionary to use for determining if a contig is circular
+   * @param dict                the sequence dictionary to use for determining if a contig is circular
    */
   def findBreakpoints(template: Template,
                       maxWithinReadDistance: Int,
