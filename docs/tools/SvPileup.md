@@ -19,7 +19,7 @@ Two output files will be created:
 2. `<output-prefix>.bam`: a SAM/BAM file containing reads that contain SV breakpoint evidence annotated with SAM
   tag.
 
-The `be` SAM tag contains a comma-delimited list of breakpoints to which a given read belongs.  Each element is
+The `be` SAM tag contains a comma-delimited list of breakpoints to which a given alignment belongs.  Each element is
 a semi-colon delimited, with four fields:
 
 1. The unique breakpoint identifier (same identifier found in the tab-delimited output).
@@ -32,6 +32,11 @@ a semi-colon delimited, with four fields:
 4. The type of breakpoint evidence: either "split_read" for observations of an aligned segment of a single read
    with split alignments, or "read_pair" for observations _between_ reads in a read pair.
 
+As described in the Algorithm Overview below, split-read evidence is favored over across-read-pair evidence.
+Therefore, if the template (alignments for a read pair) contain both types of evidence, then the `be` tag
+will only be added to the split-read alignments (i.e. the primary and supplementary alignments of the read
+in the pair that has split-read evidence), and will not be found in the mate's alignment.
+ 
 ## Example output
 
 The following shows two breakpoints:
