@@ -56,7 +56,7 @@ class FgSvMetricsDoclet extends FgMetricsDoclet {
   }
 
   /** Locates the metrics documentation templates and turns them into simple case classes with comments as markdown. */
-  private lazy val metrics: Seq[MetricDescription] = {
+  override protected lazy val metrics: Seq[MetricDescription] = {
     def simplify(name: String) = if (name.indexOf('.') > 0) name.substring(name.lastIndexOf('.') + 1) else name
 
     findMetricsClasses.map{ template =>
@@ -89,7 +89,7 @@ class FgSvMetricsDoclet extends FgMetricsDoclet {
   }
 
   /** Take the body of a scaladoc comment and renders it into MarkDown. */
-  private def renderBody(body: Body): String = {
+  override protected def renderBody(body: Body): String = {
     val buffer = new StringBuilder
 
     // Takes a block element and renders it into MarkDown and writes it into the buffer
@@ -125,6 +125,6 @@ class FgSvMetricsDoclet extends FgMetricsDoclet {
   }
 
   /** Turns the text from a heading into the text to use as a link target. */
-  private def toLinkTarget(heading: String): String = heading.toLowerCase.replace(' ', '-')
+  override protected def toLinkTarget(heading: String): String = heading.toLowerCase.replace(' ', '-')
 }
 
