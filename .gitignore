@@ -4,3 +4,6 @@ out
 jars
 project
 target
+.bloop
+.metals
+.vscode

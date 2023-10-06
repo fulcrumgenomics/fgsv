@@ -5,7 +5,7 @@ import com.fulcrumgenomics.bam.api.{SamSource, SamWriter}
 import com.fulcrumgenomics.bam.{Bams, Template}
 import com.fulcrumgenomics.commons.io.PathUtil
 import com.fulcrumgenomics.commons.util.LazyLogging
-import com.fulcrumgenomics.fasta.SequenceDictionary
+import com.fulcrumgenomics.fasta.{SequenceDictionary, Topology}
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.sv.EvidenceType._
 import com.fulcrumgenomics.sv._
@@ -52,11 +52,11 @@ object TargetBedRequirement extends FgBioEnum[TargetBedRequirement] {
     |  tag.
     |
     |The `be` SAM tag contains a comma-delimited list of breakpoints to which a given alignment belongs.  Each element is
-    |a semi-colon delimited, with four fields:
+    |semi-colon delimited, with four fields:
     |
     |1. The unique breakpoint identifier (same identifier found in the tab-delimited output).
-    |2. Either "left" or "right, corresponding to if the read shows evidence of the genomic left or right side of the
-    |   breakpoint as found in the breakpoint file (i.e. `left_pos` or `right_pos`).
+    |2. Either "left" or "right, corresponding to whether the read shows evidence of the genomic left or right side of
+    |   the breakpoint as found in the breakpoint file (i.e. `left_pos` or `right_pos`).
     |3. Either "from" or "into", such that when traversing the breakpoint would read through "from" and then into
     |   "into" in the sequencing order of the read pair.  For a split-read alignment, the "from" contains the aligned
     |   portion of the read that comes from earlier in the read in sequencing order.  For an alignment of a read-pair
@@ -68,7 +68,7 @@ object TargetBedRequirement extends FgBioEnum[TargetBedRequirement] {
     |Therefore, if the template (alignments for a read pair) contain both types of evidence, then the `be` tag
     |will only be added to the split-read alignments (i.e. the primary and supplementary alignments of the read
     |in the pair that has split-read evidence), and will not be found in the mate's alignment.
-    | 
+    |
     |## Example output
     |
     |The following shows two breakpoints:
@@ -153,7 +153,8 @@ class SvPileup
           maxWithinReadDistance    = maxAlignedSegmentInnerDistance,
           maxReadPairInnerDistance = maxReadPairInnerDistance,
           minUniqueBasesToAdd      = minUniqueBasesToAdd,
-          slop                     = slop
+          slop                     = slop,
+          dict                     = source.dict,
         )
 
         val filteredEvidences = targets match {
@@ -320,12 +321,14 @@ object SvPileup extends LazyLogging {
    *                            adding them.
    * @param slop                the number of bases of slop to allow when determining which records to track for the
    *                            left or right side of an aligned segment when merging segments
+   * @param dict                the sequence dictionary to use for determining if a contig is circular
    */
   def findBreakpoints(template: Template,
                       maxWithinReadDistance: Int,
                       maxReadPairInnerDistance: Int,
                       minUniqueBasesToAdd: Int,
-                      slop: Int = 0
+                      slop: Int = 0,
+                      dict: SequenceDictionary
                      ): IndexedSeq[BreakpointEvidence] = {
     val segments = AlignedSegment.segmentsFrom(template, minUniqueBasesToAdd=minUniqueBasesToAdd, slop=slop)
 
@@ -334,11 +337,11 @@ object SvPileup extends LazyLogging {
         NoBreakpoints
       case 2     =>
         // Special case for 2 since most templates will generate two segments and we'd like it to be efficient
-        val bp = findBreakpoint(segments.head, segments.last, maxWithinReadDistance, maxReadPairInnerDistance)
+        val bp = findBreakpoint(segments.head, segments.last, maxWithinReadDistance, maxReadPairInnerDistance, dict)
         if (bp.isEmpty) NoBreakpoints else bp.toIndexedSeq
       case _     =>
         segments.iterator.sliding(2).flatMap { case Seq(seg1, seg2) =>
-          findBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance)
+          findBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance, dict)
         }.toIndexedSeq
     }
   }
@@ -347,9 +350,10 @@ object SvPileup extends LazyLogging {
   private def findBreakpoint(seg1: AlignedSegment,
                              seg2: AlignedSegment,
                              maxWithinReadDistance: Int,
-                             maxReadPairInnerDistance: Int): Option[BreakpointEvidence] = {
+                             maxReadPairInnerDistance: Int,
+                             dict: SequenceDictionary): Option[BreakpointEvidence] = {
     if (isInterContigBreakpoint(seg1, seg2) ||
-        isIntraContigBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance)
+        isIntraContigBreakpoint(seg1, seg2, maxWithinReadDistance, maxReadPairInnerDistance, dict)
     ) {
       val ev = if (seg1.origin.isInterRead(seg2.origin)) EvidenceType.ReadPair else EvidenceType.SplitRead
       Some(BreakpointEvidence(from=seg1, into=seg2, evidence=ev))
@@ -370,9 +374,10 @@ object SvPileup extends LazyLogging {
     r1.refIndex != r2.refIndex
   }
 
-  /** Determines if the two segments are provide evidence of a breakpoint joining two different regions from
-   * the same contig. Returns true if:
-   *   - the two segments overlap (implying some kind of duplication) (note overlapping reads will get a merged seg)
+  /** Determines if the two segments provide evidence of a breakpoint joining two different regions from
+   * the same contig. If the contig is circular (i.e. labeled `TP:circular` in the `SQ` header), then
+   * reads that span the origin are considered contiguous. Returns true if:
+   *   - the two segments overlap (implying some kind of duplication) (note: overlapping reads will get a merged seg)
    *   - the strand of the two segments differ (implying an inversion or other rearrangement)
    *   - the second segment is before the first segment on the genome
    *   - the distance between the two segments is larger than the maximum allowed (likely a deletion)
@@ -381,29 +386,46 @@ object SvPileup extends LazyLogging {
    * @param seg2 the second alignment segment
    * @param maxWithinReadDistance the maximum distance between segments if they are from the same read
    * @param maxBetweenReadDistance the maximum distance between segments if they are from different reads
+   * @param dict the sequence dictionary to use for determining if a contig is circular
    */
   def isIntraContigBreakpoint(seg1: AlignedSegment,
                               seg2: AlignedSegment,
                               maxWithinReadDistance: Int,
-                              maxBetweenReadDistance: Int): Boolean = {
+                              maxBetweenReadDistance: Int,
+                              dict: SequenceDictionary): Boolean = {
     require(seg1.range.refIndex == seg2.range.refIndex)
 
     // The way aligned segments are generated for a template, if we have all the reads in the expected orientation
-    // the segments should all come out on the same strand.  Therefore any difference in strand is odd.  In addition
-    // any segment that "moves backwards" down the genome is odd, as genome position and read position should increase
-    // together.
-    if (seg1.positiveStrand != seg2.positiveStrand) true
-    else if (seg1.positiveStrand && seg2.range.start < seg1.range.end) true
-    else if (!seg1.positiveStrand && seg1.range.start < seg2.range.start) true
-    else {
-      val maxDistance = if (seg1.origin.isInterRead(seg2.origin)) maxBetweenReadDistance else maxWithinReadDistance
-
-      val innerDistance = {
-        if (seg1.range.start <= seg2.range.start) seg2.range.start - seg1.range.end
-        else                                      seg1.range.start - seg2.range.end
+    // the segments should all come out on the same strand. Therefore any difference in strand is odd.
+    val positiveStrand = seg1.positiveStrand
+    positiveStrand != seg2.positiveStrand || {
+      // Otherwise, any segment that "moves backwards" down the genome is odd, as genome position and read position
+      // should increase together (unless the contig is circular).
+      val contig = dict(seg1.range.refIndex)
+      val isCircular = contig.topology.contains(Topology.Circular)
+      (!isCircular && (
+        (positiveStrand && seg2.range.start < seg1.range.end) ||
+        (!positiveStrand && seg1.range.start < seg2.range.end)
+      )) || {
+        // If the contig is circular and the segments span the origin, treat them as contiguous when
+        // calculating the distance between them.
+        val innerDistance = if (isCircular && positiveStrand && seg2.range.end <= seg1.range.start) {
+          require(seg1.range.end <= contig.length)
+          (contig.length - seg1.range.end) + seg2.range.start
+        }
+        else if (isCircular && !positiveStrand && seg1.range.end <= seg2.range.start) {
+          require(seg2.range.end <= contig.length)
+          (contig.length - seg2.range.end) + seg1.range.start
+        }
+        else if (seg1.range.start <= seg2.range.start) {
+          seg2.range.start - seg1.range.end
+        }
+        else {
+          seg1.range.start - seg2.range.end
+        }
+        val maxDistance = if (seg1.origin.isInterRead(seg2.origin)) maxBetweenReadDistance else maxWithinReadDistance
+        innerDistance > maxDistance
       }
-
-      innerDistance > maxDistance
     }
   }
 }
