@@ -11,8 +11,8 @@ Filters and merges SVPileup output.
 
 ## Arguments
 
-|Name|Flag|Type|Description|Required?|Max Values|Default Value(s)|
-|----|----|----|-----------|---------|----------|----------------|
+|Name|Flag|Type|Description|Required?|Max # of Values|Default Value(s)|
+|----|----|----|-----------|---------|---------------|----------------|
 |input|i|FilePath|The input pileup file from SvPileup|Required|1||
 |output|o|FilePath|The output filtered and merged SvPileup file|Required|1||
 |dict|d|PathToSequenceDictionary|The path to the reference sequence dictionary.|Required|1||
