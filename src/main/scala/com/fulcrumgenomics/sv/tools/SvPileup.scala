@@ -392,37 +392,35 @@ object SvPileup extends LazyLogging {
     
     // The way aligned segments are generated for a template, if we have all the reads in the expected orientation
     // the segments should all come out on the same strand. Therefore any difference in strand is odd.
-    val positive_strand = seg1.positiveStrand
-    if (positive_strand != seg2.positiveStrand) {
-      return true
+    val positiveStrand = seg1.positiveStrand
+    positiveStrand != seg2.positiveStrand || {
+      // Otherwise, any segment that "moves backwards" down the genome is odd, as genome position and read position 
+      // should increase together (unless the contig is circular).
+      val contig = dict(seg1.range.refIndex)
+      val isCircular = contig.topology.contains(Topology.Circular)
+      (!isCircular && (
+        (positiveStrand && seg2.range.start < seg1.range.end) ||
+        (!positiveStrand && seg1.range.start < seg2.range.end)
+      )) || {
+        // If the contig is circular and the segments span the origin, treat them as contiguous when
+        // calculating the distance between them.
+        val innerDistance = if (isCircular && positiveStrand && seg2.range.end <= seg1.range.start) {
+          require(seg1.range.end <= contig.length)
+          (contig.length - seg1.range.end) + seg2.range.start
+        }
+        else if (isCircular && !positiveStrand && seg1.range.end <= seg2.range.start) {
+          require(seg2.range.end <= contig.length)
+          (contig.length - seg2.range.end) + seg1.range.start
+        }
+        else if (seg1.range.start <= seg2.range.start) {
+          seg2.range.start - seg1.range.end
+        }
+        else {
+          seg1.range.start - seg2.range.end
+        }
+        val maxDistance = if (seg1.origin.isInterRead(seg2.origin)) maxBetweenReadDistance else maxWithinReadDistance
+        innerDistance > maxDistance
+      }
     }
-    // Otherwise, any segment that "moves backwards" down the genome is odd, as genome position and read position 
-    // should increase together (unless the contig is curcular).
-    val contig = dict(seg1.range.refIndex)
-    val is_circular = contig.topology.contains(Topology.Circular)
-    if (!is_circular && (
-      (positive_strand && seg2.range.start < seg1.range.end) ||
-      (!positive_strand && seg1.range.start < seg2.range.end)
-    )) {
-      return true
-    }
-    // If the contig is curcular and the segments span the origin, treat them as contiguous when
-    // calculating the distance between them.
-    val innerDistance = if (is_circular && positive_strand && seg2.range.end <= seg1.range.start) {
-      require(seg1.range.end <= contig.length)
-      (contig.length - seg1.range.end) + seg2.range.start
-    }
-    else if (is_circular && !positive_strand && seg1.range.end <= seg2.range.start) {
-      require(seg2.range.end <= contig.length)
-      (contig.length - seg2.range.end) + seg1.range.start
-    }
-    else if (seg1.range.start <= seg2.range.start) {
-      seg2.range.start - seg1.range.end
-    }
-    else {
-      seg1.range.start - seg2.range.end
-    }
-    val maxDistance = if (seg1.origin.isInterRead(seg2.origin)) maxBetweenReadDistance else maxWithinReadDistance
-    innerDistance > maxDistance
   }
 }
