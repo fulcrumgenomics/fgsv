@@ -23,7 +23,7 @@ The `be` SAM tag contains a comma-delimited list of breakpoints to which a given
 semi-colon delimited, with four fields:
 
 1. The unique breakpoint identifier (same identifier found in the tab-delimited output).
-2. Either "left" or "right, corresponding to whether the read shows evidence of the genomic left or right side of 
+2. Either "left" or "right, corresponding to whether the read shows evidence of the genomic left or right side of
    the breakpoint as found in the breakpoint file (i.e. `left_pos` or `right_pos`).
 3. Either "from" or "into", such that when traversing the breakpoint would read through "from" and then into
    "into" in the sequencing order of the read pair.  For a split-read alignment, the "from" contains the aligned
@@ -36,7 +36,7 @@ As described in the Algorithm Overview below, split-read evidence is favored ove
 Therefore, if the template (alignments for a read pair) contain both types of evidence, then the `be` tag
 will only be added to the split-read alignments (i.e. the primary and supplementary alignments of the read
 in the pair that has split-read evidence), and will not be found in the mate's alignment.
- 
+
 ## Example output
 
 The following shows two breakpoints:
@@ -79,8 +79,8 @@ Split read evidence will be returned in favor of across-read-pair evidence when 
 
 ## Arguments
 
-|Name|Flag|Type|Description|Required?|Max Values|Default Value(s)|
-|----|----|----|-----------|---------|----------|----------------|
+|Name|Flag|Type|Description|Required?|Max # of Values|Default Value(s)|
+|----|----|----|-----------|---------|---------------|----------------|
 |input|i|PathToBam|The input query sorted or grouped BAM|Required|1||
 |output|o|PathPrefix|The output path prefix|Required|1||
 |max-read-pair-inner-distance|d|Int|The maximum _inner_ distance for normal read pair|Optional|1|1000|
