@@ -69,7 +69,7 @@ trait ReleaseModule extends JavaModule {
 
 
 object tools extends CommonModule with PublishModule with ReleaseModule {
-  def scalaVersion = "2.13.12"
+  def scalaVersion = "2.13.8"
   override def millSourcePath = super.millSourcePath / os.up
   override def mainClass = Some("com.fulcrumgenomics.sv.cmdline.SvMain")
   override def artifactName = "fgsv"
