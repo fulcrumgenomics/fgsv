@@ -51,11 +51,11 @@ object TargetBedRequirement extends FgBioEnum[TargetBedRequirement] {
     |2. `<output-prefix>.bam`: a SAM/BAM file containing reads that contain SV breakpoint evidence annotated with SAM
     |  tag.
     |
-    |The `be` SAM tag contains a comma-delimited list of breakpoints to which a given read belongs.  Each element is
+    |The `be` SAM tag contains a comma-delimited list of breakpoints to which a given alignment belongs.  Each element is
     |semi-colon delimited, with four fields:
     |
     |1. The unique breakpoint identifier (same identifier found in the tab-delimited output).
-    |2. Either "left" or "right, corresponding to whether the read shows evidence of the genomic left or right side of 
+    |2. Either "left" or "right, corresponding to whether the read shows evidence of the genomic left or right side of
     |   the breakpoint as found in the breakpoint file (i.e. `left_pos` or `right_pos`).
     |3. Either "from" or "into", such that when traversing the breakpoint would read through "from" and then into
     |   "into" in the sequencing order of the read pair.  For a split-read alignment, the "from" contains the aligned
@@ -63,6 +63,11 @@ object TargetBedRequirement extends FgBioEnum[TargetBedRequirement] {
     |   spanning the breakpoint, then "from" should be read-one of the pair and "into" should be read-two of the pair.
     |4. The type of breakpoint evidence: either "split_read" for observations of an aligned segment of a single read
     |   with split alignments, or "read_pair" for observations _between_ reads in a read pair.
+    |
+    |As described in the Algorithm Overview below, split-read evidence is favored over across-read-pair evidence.
+    |Therefore, if the template (alignments for a read pair) contain both types of evidence, then the `be` tag
+    |will only be added to the split-read alignments (i.e. the primary and supplementary alignments of the read
+    |in the pair that has split-read evidence), and will not be found in the mate's alignment.
     |
     |## Example output
     |
@@ -149,7 +154,7 @@ class SvPileup
           maxReadPairInnerDistance = maxReadPairInnerDistance,
           minUniqueBasesToAdd      = minUniqueBasesToAdd,
           slop                     = slop,
-          dict                     = source.dict, 
+          dict                     = source.dict,
         )
 
         val filteredEvidences = targets match {
@@ -389,12 +394,12 @@ object SvPileup extends LazyLogging {
                               maxBetweenReadDistance: Int,
                               dict: SequenceDictionary): Boolean = {
     require(seg1.range.refIndex == seg2.range.refIndex)
-    
+
     // The way aligned segments are generated for a template, if we have all the reads in the expected orientation
     // the segments should all come out on the same strand. Therefore any difference in strand is odd.
     val positiveStrand = seg1.positiveStrand
     positiveStrand != seg2.positiveStrand || {
-      // Otherwise, any segment that "moves backwards" down the genome is odd, as genome position and read position 
+      // Otherwise, any segment that "moves backwards" down the genome is odd, as genome position and read position
       // should increase together (unless the contig is circular).
       val contig = dict(seg1.range.refIndex)
       val isCircular = contig.topology.contains(Topology.Circular)
