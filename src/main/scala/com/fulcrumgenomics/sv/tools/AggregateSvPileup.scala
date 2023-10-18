@@ -351,8 +351,8 @@ case class AggregatedBreakpointPileup(id: String,
           source       = src,
           contig       = contig,
           breakends    = pileups,
-          queryMin     = minPos - flank,
-          queryMax     = maxPos + flank,
+          queryMin     = Math.max(1, minPos - flank),
+          queryMax     = Math.min(maxPos + flank, src.dict(contig).length),
           minTotal     = minTotal,
           minFrequency = minFrequency,
         )
@@ -461,7 +461,6 @@ case class AggregatedBreakpointPileup(id: String,
   private def overlapsTarget(contig: String, start: Int, end: Int, targets: OverlapDetector[BEDFeature]): Boolean = {
     targets.overlapsAny(new Interval(contig, start, end))
   }
-
 }
 
 
