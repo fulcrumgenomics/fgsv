@@ -17,7 +17,6 @@
 [doi-badge]:           https://zenodo.org/badge/454071954.svg
 [doi-link]:            https://zenodo.org/doi/10.5281/zenodo.10452647
 
-
 Tools to find evidence for structural variation.
 
 ## Documentation
