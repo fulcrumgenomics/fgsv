@@ -19,7 +19,7 @@ Two output files will be created:
 2. `<output-prefix>.bam`: a SAM/BAM file containing reads that contain SV breakpoint evidence annotated with SAM
   tag.
 
-The `be` SAM tag contains a comma-delimited list of breakpoint IDs which a given alignment supports.  Each element is
+The `be` SAM tag contains a comma-delimited list of breakpoints to which a given alignment belongs.  Each element is
 semi-colon delimited, with four fields:
 
 1. The unique breakpoint identifier (same identifier found in the tab-delimited output).
