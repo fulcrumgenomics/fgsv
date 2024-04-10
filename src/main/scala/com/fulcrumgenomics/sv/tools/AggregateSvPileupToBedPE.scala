@@ -47,6 +47,17 @@ object AggregateSvPileupToBedPE {
     * - https://github.com/igvteam/igv/wiki/BedPE-Support
     *
     * Note that the field `score` is allowed to be a string per bedtools!
+    *
+    * @param chrom1 The reference sequence name for the first interval.
+    * @param start1 The 0-based position for the start of the first interval.
+    * @param end1 The 0-based half-open position for the end of the first interval.
+    * @param chrom2 The reference sequence name for the second interval.
+    * @param start2 The 0-based position for the start of the second interval.
+    * @param end2 The 0-based half-open position for the end of the second interval.
+    * @param name The name of the paired interval record.
+    * @param score The score of the paired interval record.
+    * @param strand1 The strand for the first interval.
+    * @param strand2 The strand for the second interval.
     */
   case class BedPE(
     chrom1: String,
