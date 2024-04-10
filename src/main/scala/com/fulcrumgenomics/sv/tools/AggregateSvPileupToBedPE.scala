@@ -38,13 +38,9 @@ object AggregateSvPileupToBedPE {
   /** The IGV-supported BEDPE file extension. */
   val BedPEExtension: String = ".bedpe"
 
-  /** A simple BEDPE record as defined by `bedtools`:
+  /** A simple BEDPE record as defined by [`bedtools`](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).
     *
-    * - https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format)
-    *
-    * Future compatibility could be implemented for supporting 10x flavored BEDPE files:
-    *
-    * - https://github.com/igvteam/igv/wiki/BedPE-Support
+    * Future compatibility could be implemented for supporting [10x flavored BEDPE files](https://github.com/igvteam/igv/wiki/BedPE-Support).
     *
     * Note that the field `score` is allowed to be a string per bedtools!
     *
