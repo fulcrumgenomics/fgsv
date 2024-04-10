@@ -53,7 +53,7 @@ Aggregated cluster of breakpoint pileups
 
 ### BedPE
 
-A simple BEDPE record as defined by [`bedtools`](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).Future compatibility could be implemented for supporting [10x flavored BEDPE files](https://github.com/igvteam/igv/wiki/BedPE-Support).Note that the field `score` is allowed to be a string per bedtools!
+A simple BEDPE record as defined by [`bedtools`](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).Future compatibility could be implemented for supporting [10x flavored BEDPE files](https://github.com/igvteam/igv/wiki/BedPE-Support).
 
 
 |Column|Type|Description|
@@ -65,7 +65,7 @@ A simple BEDPE record as defined by [`bedtools`](https://bedtools.readthedocs.io
 |start2|Int|The 0-based position for the start of the second interval.|
 |end2|Int|The 0-based half-open position for the end of the second interval.|
 |name|String|The name of the paired interval record.|
-|score|String|The score of the paired interval record.|
+|score|Int|The score of the paired interval record.|
 |strand1|Strand|The strand for the first interval.|
 |strand2|Strand|The strand for the second interval.|
 
