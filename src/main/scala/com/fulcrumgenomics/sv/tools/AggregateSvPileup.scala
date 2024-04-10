@@ -358,7 +358,7 @@ case class AggregatedBreakpointPileup(id: String,
         )
         numOverlap match {
           case None => None
-          case Some(n) => Some(total.toDouble / n, n)
+          case Some(n) => Some((total.toDouble / n, n))
         }
     }
     val leftResult  = frequency_and_count(left_contig, left_pileups, left_min_pos, left_max_pos)
@@ -457,10 +457,6 @@ case class AggregatedBreakpointPileup(id: String,
       right_targets         = if (rightOverlapNames.isEmpty) None else Some(rightOverlapNames.mkString(",")),
     )
   }
-
-  private def overlapsTarget(contig: String, start: Int, end: Int, targets: OverlapDetector[BEDFeature]): Boolean = {
-    targets.overlapsAny(new Interval(contig, start, end))
-  }
 }
 
 
@@ -512,5 +508,5 @@ class PositionList(val positions: Seq[Int]) {
 
 object PositionList {
   def apply(positions: Int*): PositionList = new PositionList(positions)
-  def apply(s: String): PositionList = new PositionList(s.split(",").map(_.toInt))
+  def apply(s: String): PositionList = new PositionList(s.split(",").map(_.toInt).toIndexedSeq)
 }

@@ -1,5 +1,6 @@
 .idea
 .idea_modules
+.java-version
 out
 jars
 project
@@ -8,3 +9,4 @@ target
 .metals
 .vscode
 .bsp
+*.iml

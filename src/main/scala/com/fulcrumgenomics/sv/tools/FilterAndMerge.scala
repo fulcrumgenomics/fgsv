@@ -2,11 +2,10 @@ package com.fulcrumgenomics.sv.tools
 
 import com.fulcrumgenomics.FgBioDef._
 import com.fulcrumgenomics.commons.collection.BetterBufferedIterator
-import com.fulcrumgenomics.commons.util.{NumericCounter, SimpleCounter}
-import com.fulcrumgenomics.fasta.SequenceDictionary
+import com.fulcrumgenomics.commons.util.NumericCounter
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.sv.cmdline.{ClpGroups, SvTool}
-import com.fulcrumgenomics.sv.{BreakpointPileup, EvidenceType}
+import com.fulcrumgenomics.sv.BreakpointPileup
 import com.fulcrumgenomics.util.{Io, Metric}
 
 import scala.collection.immutable.IndexedSeq
@@ -18,7 +17,6 @@ import scala.collection.immutable.IndexedSeq
 class FilterAndMerge
 ( @arg(flag='i', doc="The input pileup file from SvPileup") input: FilePath,
   @arg(flag='o', doc="The output filtered and merged SvPileup file") output: FilePath,
-  @arg(flag='d', doc="The path to the reference sequence dictionary.") dict: PathToSequenceDictionary,
   @arg(flag='m', doc="The minimum # of observations to examine an input site") minPre: Int = 1,
   @arg(flag='M', doc="The minimum # of observations to output a site") minPost: Int = 1,
   @arg(flag='s', doc="The maximum # bases between a breakend across adjacent sites") slop: Int = 0,
@@ -28,8 +26,6 @@ class FilterAndMerge
   Io.assertCanWriteFile(output)
 
   override def execute(): Unit = {
-    val dict = SequenceDictionary(this.dict)
-
     // Read in the pileups
     val iter   = Metric.iterator[BreakpointPileup](input)
       .filter(_.total >= minPre)
@@ -117,12 +113,12 @@ object MergedPileup {
       left_contig    = pileups.head.left_contig,
       left_start     = pileups.map(_.left_pos).min,
       left_end       = pileups.map(_.left_pos).max,
-      left_mean      = Math.round(leftMean),
+      left_mean      = Math.round(leftMean.toFloat),
       left_strand    = pileups.head.left_strand,
       right_contig   = pileups.head.right_contig,
       right_start    = pileups.map(_.right_pos).min,
       right_end      = pileups.map(_.right_pos).max,
-      right_mean     = Math.round(rightMean),
+      right_mean     = Math.round(rightMean.toFloat),
       right_strand   = pileups.head.right_strand,
       mean_count     = meanCount,
       stddev_count   = counts.stddev(meanCount),

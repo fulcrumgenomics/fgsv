@@ -111,7 +111,7 @@ class SvPileupTest extends UnitSpec {
   // Objects and functions used in testing findBreakpoint()
   //////////////////////////////////////////////////////////////////////////////
   private val builder = {
-    val seqs = (Range.inclusive(1, 22) ++ Seq("X", "Y")).map { chr =>
+    val seqs = (Range.inclusive(1, 22).map(_.toString) ++ Seq("X", "Y")).map { chr =>
       SequenceMetadata(name="chr" + chr, length=200e6.toInt)
     } ++ Seq(SequenceMetadata(name="chrM", length=16000, topology = Some(Topology.Circular)))
     new SamBuilder(readLength=100, sd=Some(SequenceDictionary(seqs:_*)))
@@ -435,8 +435,8 @@ class SvPileupTest extends UnitSpec {
       val prefix = makeTempFile("output", "")
       Outputs(
         prefix = prefix,
-        bam    = PathUtil.pathTo(prefix + ".bam"),
-        txt    = PathUtil.pathTo(prefix + ".txt")
+        bam    = PathUtil.pathTo(prefix.toString + ".bam"),
+        txt    = PathUtil.pathTo(prefix.toString + ".txt")
       )
     }
   }
@@ -473,8 +473,6 @@ class SvPileupTest extends UnitSpec {
     }
 
     val leftFromTag  = s"0;left;from;${SplitRead.snakeName}"
-    val rightFromTag = s"0;right;from;${SplitRead.snakeName}"
-    val leftIntoTag  = f"0;left;into;${SplitRead.snakeName}"
     val rightIntoTag = f"0;right;into;${SplitRead.snakeName}"
 
     // r1Half2 is not annotated, since it is superseded by r1Half1 -> fullR2

@@ -3,7 +3,8 @@ package com.fulcrumgenomics.sv
 import com.fulcrumgenomics.FgBioDef.PathToBam
 import com.fulcrumgenomics.bam.api.{SamRecord, SamSource}
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.{Matchers, OptionValues}
+import org.scalatest.OptionValues
+import org.scalatest.matchers.should._
 
 import java.nio.file.{Files, Path}
 
