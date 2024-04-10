@@ -42,8 +42,6 @@ object AggregateSvPileupToBedPE {
     *
     * Future compatibility could be implemented for supporting [10x flavored BEDPE files](https://github.com/igvteam/igv/wiki/BedPE-Support).
     *
-    * Note that the field `score` is allowed to be a string per bedtools!
-    *
     * @param chrom1 The reference sequence name for the first interval.
     * @param start1 The 0-based position for the start of the first interval.
     * @param end1 The 0-based half-open position for the end of the first interval.
@@ -63,7 +61,7 @@ object AggregateSvPileupToBedPE {
     start2: Int,
     end2: Int,
     name: String,
-    score: String,
+    score: Int,
     strand1: Strand,
     strand2: Strand,
   ) extends Metric
@@ -81,36 +79,18 @@ object AggregateSvPileupToBedPE {
         start2  = pileup.right_min_pos,
         end2    = pileup.right_max_pos + 1,
         name    = pileup.id,
-        score   = pileup.total.toString,
+        score   = pileup.total,
         strand1 = Strand.decode(pileup.left_strand),
         strand2 = Strand.decode(pileup.right_strand),
       )
     }
 
-    /** A writer class for writing [[BedPE]] records. */
+    /** A writer class for writing [[BedPE]] records since BEDPE files do not by default have a header. */
     class BedPEWriter(val out: BufferedWriter) extends Writer[BedPE] {
 
       /** Write a [[BedPE]] record to the underlying writer. */
       override def write(record: BedPE): Unit = {
-        out.write(record.chrom1)
-        out.write('\t')
-        out.write(Integer.toString(record.start1))
-        out.write('\t')
-        out.write(Integer.toString(record.end1))
-        out.write('\t')
-        out.write(record.chrom2)
-        out.write('\t')
-        out.write(Integer.toString(record.start2))
-        out.write('\t')
-        out.write(Integer.toString(record.end2))
-        out.write('\t')
-        out.write(record.name)
-        out.write('\t')
-        out.write(record.score)
-        out.write('\t')
-        out.write(record.strand1.toString)
-        out.write('\t')
-        out.write(record.strand2.toString)
+        out.write(record.values.mkString("\t"))
         out.newLine()
       }
 

@@ -40,7 +40,7 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
     start2  = 200,
     end2    = 201,
     name    = "112",
-    score   = "2",
+    score   = 2,
     strand1 = Strand.POSITIVE,
     strand2 = Strand.NEGATIVE,
   )
@@ -58,7 +58,7 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
       start2  = 200,
       end2    = 201,
       name    = "112",
-      score   = "2",
+      score   = 2,
       strand1 = Strand.POSITIVE,
       strand2 = Strand.NEGATIVE,
     )
@@ -71,7 +71,7 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
       Integer.toString(record.start2),
       Integer.toString(record.end2),
       record.name,
-      record.score,
+      record.score.toString,
       record.strand1.toString,
       record.strand2.toString,
     ).toIndexedSeq
@@ -97,7 +97,7 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
       Integer.toString(test_bed_pe.start2),
       Integer.toString(test_bed_pe.end2),
       test_bed_pe.name,
-      test_bed_pe.score,
+      test_bed_pe.score.toString,
       test_bed_pe.strand1.toString,
       test_bed_pe.strand2.toString,
     ).toIndexedSeq
