@@ -10,7 +10,7 @@ import com.fulcrumgenomics.util.{Io, Metric}
 
 import scala.collection.immutable.IndexedSeq
 
-@clp(group=ClpGroups.All, description=
+@clp(group=ClpGroups.BreakpointAndSv, description=
   """
     |Filters and merges SVPileup output.
   """)

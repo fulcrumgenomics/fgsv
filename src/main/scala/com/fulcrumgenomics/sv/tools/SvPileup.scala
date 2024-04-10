@@ -37,7 +37,7 @@ object TargetBedRequirement extends FgBioEnum[TargetBedRequirement] {
 }
 
 
-@clp(group=ClpGroups.All, description=
+@clp(group=ClpGroups.BreakpointAndSv, description=
   """
     |Collates a pileup of putative structural variant supporting reads.
     |

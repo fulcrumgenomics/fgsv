@@ -15,7 +15,7 @@ import com.fulcrumgenomics.FgBioDef._
 import scala.collection.mutable
 
 
-@clp(group=ClpGroups.All, description=
+@clp(group=ClpGroups.BreakpointAndSv, description=
   """
     |Merges nearby pileups of reads supporting putative breakpoints.
     |
