@@ -85,7 +85,7 @@ class FgSvMetricsDoclet extends FgMetricsDoclet {
 
     find(universe.rootPackage)
       .filter(d => d.isClass && !d.isAbstract)
-      .filter(d => d.parentTypes.exists { case (template, typ) => template.toString == classOf[Metric].getName })
+      .filter(d => d.parentTypes.exists { case (template, _) => template.toString == classOf[Metric].getName })
   }
 
   /** Take the body of a scaladoc comment and renders it into MarkDown. */
@@ -93,14 +93,14 @@ class FgSvMetricsDoclet extends FgMetricsDoclet {
     val buffer = new StringBuilder
 
     // Takes a block element and renders it into MarkDown and writes it into the buffer
-    def renderBlock(block: Block, indent: String): Unit = {
+    def renderBlock(block: Block): Unit = {
       (block: @unchecked) match {
-        case para:  Paragraph      => render(para.text)
-        case dlist: DefinitionList => () // TODO
-        case hr:    HorizontalRule => () // TODO
-        case olist: OrderedList    => () // TODO
-        case title: Title          => buffer.append("#" * title.level).append(" "); render(title.text); buffer.append("\n\n")
-        case ulist: UnorderedList  => () // TODO
+        case para:  Paragraph     => render(para.text)
+        case _: DefinitionList    => () // TODO
+        case _:    HorizontalRule => () // TODO
+        case _: OrderedList       => () // TODO
+        case title: Title         => buffer.append("#" * title.level).append(" "); render(title.text); buffer.append("\n\n")
+        case _: UnorderedList     => () // TODO
       }
     }
 
@@ -120,7 +120,7 @@ class FgSvMetricsDoclet extends FgMetricsDoclet {
       case under:   Underline   => buffer.append("__"); render(under.text); buffer.append("__")
     }
 
-    body.blocks.foreach(renderBlock(_, ""))
+    body.blocks.foreach(renderBlock)
     buffer.toString()
   }
 
