@@ -5,7 +5,7 @@ title: AggregateSvPileup
 # AggregateSvPileup
 
 ## Overview
-**Group:** All tools
+**Group:** Breakpoint and SV Tools
 
 Merges nearby pileups of reads supporting putative breakpoints.
 

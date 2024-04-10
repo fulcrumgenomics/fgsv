@@ -5,7 +5,7 @@ title: SvPileup
 # SvPileup
 
 ## Overview
-**Group:** All tools
+**Group:** Breakpoint and SV Tools
 
 Collates a pileup of putative structural variant supporting reads.
 

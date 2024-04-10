@@ -13,6 +13,7 @@ the type of each field/column is given, including two commonly used types:
 |Metric Type|Description|
 |-----------|-----------|
 |[AggregatedBreakpointPileup](#aggregatedbreakpointpileup)|Aggregated cluster of breakpoint pileups|
+|[BedPE](#bedpe)|A simple BEDPE record as defined by `bedtools`:- https://bedtools|
 |[BreakpointPileup](#breakpointpileup)|Represents a pileup of evidence (reads, read-pairs) for a breakpoint|
 |[MergedPileup](#mergedpileup)||
 
@@ -48,6 +49,25 @@ Aggregated cluster of breakpoint pileups
 |right_overlaps_target|Boolean|True if the right aggregated region overlaps a target region|
 |left_targets|Option[String]|The comma-delimited list of target names overlapping the left breakpoint|
 |right_targets|Option[String]|The comma-delimited list of target names overlapping the right breakpoint|
+
+
+### BedPE
+
+A simple BEDPE record as defined by `bedtools`:- https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format)Future compatibility could be implemented for supporting 10x flavored BEDPE files:- https://github.com/igvteam/igv/wiki/BedPE-SupportNote that the field `score` is allowed to be a string per bedtools!
+
+
+|Column|Type|Description|
+|------|----|-----------|
+|chrom1|String||
+|start1|Int||
+|end1|Int||
+|chrom2|String||
+|start2|Int||
+|end2|Int||
+|name|String||
+|score|String||
+|strand1|Strand||
+|strand2|Strand||
 
 
 ### BreakpointPileup
