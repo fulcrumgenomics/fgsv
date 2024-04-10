@@ -5,7 +5,7 @@ title: FilterAndMerge
 # FilterAndMerge
 
 ## Overview
-**Group:** All tools
+**Group:** Breakpoint and SV Tools
 
 Filters and merges SVPileup output.
 
