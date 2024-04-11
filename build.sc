@@ -120,11 +120,7 @@ object tools extends CommonModule with PublishModule with ReleaseModule {
   override def mainClass = Some("com.fulcrumgenomics.sv.cmdline.SvMain")
   override def artifactName = "fgsv"
   def gitHash = Process("git rev-parse --short HEAD").lazyLines.head
-  // This is the current version (use for the next release)
-  def curVersion = s"0.2.0"
-  // true if this is a development version, false if this is a release version
-  def isDevelopment = false
-  def publishVersion = if (isDevelopment) s"${curVersion}-${gitHash}-SNAPSHOT" else s"${curVersion}"
+  def publishVersion = "0.2.1-${gitHash}-SNAPSHOT"
   def pomSettings = PomSettings(
     description = artifactName(),
     organization = "com.fulcrumgenomics",
