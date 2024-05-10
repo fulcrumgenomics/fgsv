@@ -36,7 +36,7 @@ Importantly, all point intervals (1-length) reported by this toolkit are 1-based
 Collates a pileup of putative structural variant supporting reads.
 
 ```console
-❯ fgsv SvPileup \
+fgsv SvPileup \
     --input sample.bam \
     --output sample.svpileup
 ```
@@ -81,7 +81,7 @@ The output of this tool is a metrics file tabulating the coalesced breakpoints w
 Convert the output of `AggregateSvPileup` to BEDPE.
 
 ```console
-❯ fgsv AggregateSvPileupToBedPE \
+fgsv AggregateSvPileupToBedPE \
       --input sample.svpileup.aggregate.txt \
       --output sample.svpileup.aggregate.bedpe
 ```
