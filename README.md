@@ -25,7 +25,7 @@ Documentation can be found in the [docs folder](docs/01_Introduction.md).
 
 ## Introduction to the `fgsv` Toolkit
 
-The `fgsv` tools are an effective structural variant debugging toolkit but are not meant to be used as a structural variant calling toolchain in-and-of-itself.
+The `fgsv` toolkit contains tools for effective structural variant debugging but are not meant to be used as a structural variant calling toolchain in-and-of-itself.
 Instead, it is better to think of `fgsv` as an effective breakpoint detection and structural variant exploration toolkit.
 
 When describing structural variation, we use the term breakpoint to mean a junction between two loci and the term breakend to refer to one of the loci in a breakpoint.
