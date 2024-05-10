@@ -5,7 +5,7 @@ title: SvPileup
 # SvPileup
 
 ## Overview
-**Group:** All tools
+**Group:** Breakpoint and SV Tools
 
 Collates a pileup of putative structural variant supporting reads.
 
@@ -15,9 +15,9 @@ Two output files will be created:
 
 1. `<output-prefix>.txt`: a tab-delimited file describing SV pileups, one line per breakpoint event.  The returned
    breakpoint will be canonicalized such that the "left" side of the breakpoint will have the lower (or equal to)
-   position on the genome vs. the "right"s side.
+   position on the genome vs. the "right"s side. Positions in this file are 1-based positions.
 2. `<output-prefix>.bam`: a SAM/BAM file containing reads that contain SV breakpoint evidence annotated with SAM
-  tag.
+   tag.
 
 The `be` SAM tag contains a comma-delimited list of breakpoints to which a given alignment belongs.  Each element is
 semi-colon delimited, with four fields:
