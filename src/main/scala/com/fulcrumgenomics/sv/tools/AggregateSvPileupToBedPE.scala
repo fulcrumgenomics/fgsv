@@ -73,11 +73,11 @@ object AggregateSvPileupToBedPE {
     def apply(pileup: AggregatedBreakpointPileup): BedPE = {
       new BedPE(
         chrom1  = pileup.left_contig,
-        start1  = pileup.left_min_pos,
-        end1    = pileup.left_max_pos + 1,
+        start1  = pileup.left_min_pos - 1,
+        end1    = pileup.left_max_pos,
         chrom2  = pileup.right_contig,
-        start2  = pileup.right_min_pos,
-        end2    = pileup.right_max_pos + 1,
+        start2  = pileup.right_min_pos - 1,
+        end2    = pileup.right_max_pos,
         name    = pileup.id,
         score   = pileup.total,
         strand1 = Strand.decode(pileup.left_strand),
