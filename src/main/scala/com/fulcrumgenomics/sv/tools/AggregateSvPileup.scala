@@ -17,7 +17,7 @@ import scala.collection.mutable
 
 @clp(group=ClpGroups.BreakpointAndSv, description=
   """
-    |Merges nearby pileups of reads supporting putative breakpoints.
+    |Aggregates and merges pileups that are likely to support the same breakpoint.
     |
     |Takes as input the file of pileups produced by `SvPileup`. That file contains a list of breakpoints, each
     |consisting of a chromosome, position and strand for each side of the breakpoint, as well as quantified read support
