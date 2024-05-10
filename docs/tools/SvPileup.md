@@ -7,7 +7,7 @@ title: SvPileup
 ## Overview
 **Group:** Breakpoint and SV Tools
 
-Collates a pileup of putative structural variant supporting reads.
+Collates pileups of reads over breakpoint events.
 
 ## Outputs
 

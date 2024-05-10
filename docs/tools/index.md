@@ -4,16 +4,16 @@ title: fgsv tools
 
 # fgsv tools
 
-The following tools are available in fgsv version 0.2.0-c2ca29a.
+The following tools are available in fgsv version 0.2.0-7067311.
 ## Breakpoint and SV Tools
 
 Primary tools for calling and transforming breakpoints and SVs.
 
 |Tool|Description|
 |----|-----------|
-|[AggregateSvPileup](AggregateSvPileup.md)|Merges nearby pileups of reads supporting putative breakpoints|
+|[AggregateSvPileup](AggregateSvPileup.md)|Aggregates and merges pileups that are likely to support the same breakpoint|
 |[FilterAndMerge](FilterAndMerge.md)|Filters and merges SVPileup output|
-|[SvPileup](SvPileup.md)|Collates a pileup of putative structural variant supporting reads|
+|[SvPileup](SvPileup.md)|Collates pileups of reads over breakpoint events|
 
 ## Utility Tools
 
