@@ -119,10 +119,12 @@ class SvPileupTest extends UnitSpec {
   import SamBuilder.{Minus, Plus, Strand}
 
   /** Construct a read/rec with the information necessary for breakpoint detection. */
-  def r(chrom: String, pos: Int, strand: SamBuilder.Strand, r: Int, cigar: String, supp: Boolean, mapq: Int = 60): SamRecord = {
+  def r(chrom: String, pos: Int, strand: SamBuilder.Strand, r: Int, cigar: String, supp: Boolean, mapq: Int = 60, dupe: Boolean = false, pf: Boolean = true): SamRecord = {
     require(r == 0 || r == 1 || r == 2)
     val rec = builder.addFrag(contig=builder.dict(chrom).index, start=pos, strand=strand, cigar=cigar, mapq=mapq).get
     rec.supplementary = supp
+    rec.duplicate = dupe
+    rec.pf = pf
 
     if (r > 0) {
       rec.paired = true
@@ -332,7 +334,7 @@ class SvPileupTest extends UnitSpec {
       r("chr1", 300, Plus, r=2, cigar="100M", supp=false, mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=true, incQcFails=true).value shouldBe template
   }
 
   it should "do nothing to a template with high mapq primaries and supplementaries" in {
@@ -343,7 +345,7 @@ class SvPileupTest extends UnitSpec {
       r("chr1", 120, Minus, r=2, cigar="30M70S", supp=true,  mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=true, incQcFails=true).value shouldBe template
   }
 
   it should "remove a low quality supplementary record" in {
@@ -354,7 +356,7 @@ class SvPileupTest extends UnitSpec {
       r("chr1", 120, Minus, r=2, cigar="30M70S", supp=true,  mapq=1),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template.copy(r2Supplementals=Nil)
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=true, incQcFails=true).value shouldBe template.copy(r2Supplementals=Nil)
   }
 
   it should "remove all evidence of R2 if the primary mapping is low quality" in {
@@ -366,7 +368,7 @@ class SvPileupTest extends UnitSpec {
     )
 
     val expected = template.copy(r2=None, r2Supplementals=Nil)
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe expected
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=true, incQcFails=true).value shouldBe expected
   }
 
   it should "return None if both R1 and R2 primaries are low quality" in {
@@ -377,7 +379,7 @@ class SvPileupTest extends UnitSpec {
       r("chr1", 120, Minus, r=2, cigar="30M70S", supp=true,  mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20) shouldBe None
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=true, incQcFails=true) shouldBe None
   }
 
   it should "remove an unmapped R2" in {
@@ -387,7 +389,7 @@ class SvPileupTest extends UnitSpec {
       Seq(r("chr1", 100, Plus, r=2, cigar="100M",   supp=false, mapq=0)).tapEach(_.unmapped = true).head,
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template.copy(r2=None)
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=true, incQcFails=true).value shouldBe template.copy(r2=None)
   }
 
   it should "handle a template with fragment data with high mapping quality" in {
@@ -396,7 +398,7 @@ class SvPileupTest extends UnitSpec {
       r("chr7", 800, Plus,  r=0, cigar="50S50M", supp=true,  mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=true, incQcFails=true).value shouldBe template
   }
 
   it should "remove low mapq supplementary records from a fragment template" in {
@@ -407,7 +409,7 @@ class SvPileupTest extends UnitSpec {
     )
 
     val expected = template.copy(r1Supplementals = template.r1Supplementals.filter(_.start != 800))
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe expected
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=true, incQcFails=true).value shouldBe expected
   }
 
   it should "return None for a fragment template with a low quality primary mapping" in {
@@ -417,7 +419,47 @@ class SvPileupTest extends UnitSpec {
       r("chr7", 820, Plus,  r=0, cigar="70S30M",    supp=true,  mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20) shouldBe None
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=true, incQcFails=true) shouldBe None
+  }
+
+  it should "return a template with the duplicate read removed when one read is marked as duplicate" in {
+    val template = t(
+      r("chr1", 100, Plus,  r=1, cigar="100M", supp=false, mapq=60, dupe=true),
+      r("chr7", 800, Minus, r=2, cigar="100M", supp=false, mapq=60, dupe=false),
+    )
+
+    val filtered = SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=false, incQcFails=false)
+    filtered.value.r1 shouldBe None
+    filtered.value.r2 shouldBe template.r2
+  }
+
+  it should "return None when both primary reads are marked as duplicates" in {
+    val template = t(
+      r("chr1", 100, Plus,  r=1, cigar="100M", supp=false, mapq=60, dupe=true),
+      r("chr7", 800, Minus, r=2, cigar="100M", supp=false, mapq=60, dupe=true),
+    )
+
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=false, incQcFails=false) shouldBe None
+  }
+
+  it should "return a template with the duplicate read removed when one read is marked as qc failing" in {
+    val template = t(
+      r("chr1", 100, Plus,  r=1, cigar="100M", supp=false, mapq=60, dupe=false),
+      r("chr7", 800, Minus, r=2, cigar="100M", supp=false, mapq=60, dupe=false, pf=false),
+    )
+
+    val filtered = SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=false, incQcFails=false)
+    filtered.value.r1 shouldBe template.r1
+    filtered.value.r2 shouldBe None
+  }
+
+  it should "return None when both primary reads are marked as qc fail" in {
+    val template = t(
+      r("chr1", 100, Plus,  r=1, cigar="100M", supp=false, mapq=60, dupe=false, pf=false),
+      r("chr7", 800, Minus, r=2, cigar="100M", supp=false, mapq=60, dupe=false, pf=false),
+    )
+
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, incDupes=false, incQcFails=false) shouldBe None
   }
 
   /** Writes the given BAM records to a BAM file */

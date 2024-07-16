@@ -15,7 +15,7 @@ Two output files will be created:
 
 1. `<output-prefix>.txt`: a tab-delimited file describing SV pileups, one line per breakpoint event.  The returned
    breakpoint will be canonicalized such that the "left" side of the breakpoint will have the lower (or equal to)
-   position on the genome vs. the "right"s side. Positions in this file are 1-based positions.
+   position on the genome vs. the "right"s side. Positions in this file are 1-based inclusive positions.
 2. `<output-prefix>.bam`: a SAM/BAM file containing reads that contain SV breakpoint evidence annotated with SAM
    tag.
 
@@ -91,4 +91,6 @@ Split read evidence will be returned in favor of across-read-pair evidence when 
 |slop|s|Int|The number of bases of slop to allow when determining which records to track for the left or right side of an aligned segment when merging segments.|Optional|1|5|
 |targets-bed|t|FilePath|Optional bed file of target regions|Optional|1||
 |targets-bed-requirement|T|Requirement|Requirement on if each side of the breakpoint must overlap a target.  Will always annotate each side of the breakpoint.|Optional|1|AnnotateOnly|
+|include-duplicates||Boolean|Include reads/templates marked as duplicates when constructing the pileup|Optional|1|false|
+|include-qc-fails||Boolean|Include reads/templates marked as QC fail when constructing the pileup|Optional|1|false|
 

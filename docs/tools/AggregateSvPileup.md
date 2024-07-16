@@ -36,7 +36,7 @@ of the overlapping target regions are copied from the `SvPiluep` input (if prese
 The output file is a tab-delimited table with one record per aggregated cluster of pileups. Aggregated
 pileups are reported with the minimum and maximum (inclusive) coordinates of all pileups in the cluster, a
 possible putative structural variant event type supported by the pileups, and the sum of read support from all
-pileups in the cluster. Positions in this file are 1-based positions.
+pileups in the cluster. Positions in this file are 1-based inclusive positions.
 
 ## Arguments
 

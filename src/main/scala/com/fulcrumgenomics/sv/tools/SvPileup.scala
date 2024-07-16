@@ -15,8 +15,6 @@ import enumeratum.EnumEntry
 import htsjdk.samtools.SAMFileHeader.{GroupOrder, SortOrder}
 import htsjdk.samtools.util.OverlapDetector
 import htsjdk.tribble.bed.BEDFeature
-
-import scala.collection.immutable.IndexedSeq
 import scala.collection.{immutable, mutable}
 
 /** An enumeration over how to utilize the input target BED file if given. */
@@ -122,7 +120,9 @@ class SvPileup
    |side of an aligned segment when merging segments.""") slop: Int = 5,
  @arg(flag='t', doc="Optional bed file of target regions") targetsBed: Option[FilePath] = None,
  @arg(flag='T', doc="Requirement on if each side of the breakpoint must overlap a target.  Will always annotate each side of the breakpoint.")
- targetsBedRequirement: TargetBedRequirement.Requirement = TargetBedRequirement.AnnotateOnly
+ targetsBedRequirement: TargetBedRequirement.Requirement = TargetBedRequirement.AnnotateOnly,
+ @arg(doc="Include reads/templates marked as duplicates when constructing the pileup") val includeDuplicates: Boolean = false,
+ @arg(doc="Include reads/templates marked as QC fail when constructing the pileup") val includeQcFails: Boolean = false,
 ) extends SvTool {
 
   import SvPileup._
@@ -145,7 +145,15 @@ class SvPileup
 
     Bams.templateIterator(source)
       .tapEach(t => progress.record(t.allReads.next()))
-      .flatMap(template => filterTemplate(template, minPrimaryMapq=minPrimaryMappingQuality, minSupplementaryMapq=minSupplementaryMappingQuality))
+      .flatMap { template =>
+        filterTemplate(
+          template,
+          minPrimaryMapq=minPrimaryMappingQuality,
+          minSupplementaryMapq=minSupplementaryMappingQuality,
+          incDupes=includeDuplicates,
+          incQcFails=includeQcFails,
+        )
+      }
       .foreach { template =>
         // Find the breakpoints
         val evidences = findBreakpoints(
@@ -297,9 +305,11 @@ object SvPileup extends LazyLogging {
    */
   def filterTemplate(t: Template,
                      minPrimaryMapq: Int,
-                     minSupplementaryMapq: Int): Option[Template] = {
-    val r1PrimaryOk = t.r1.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
-    val r2PrimaryOk = t.r2.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
+                     minSupplementaryMapq: Int,
+                     incDupes: Boolean,
+                     incQcFails: Boolean): Option[Template] = {
+    val r1PrimaryOk = t.r1.exists(r => r.mapped && r.mapq >= minPrimaryMapq && (incDupes || !r.duplicate) && (incQcFails || r.pf))
+    val r2PrimaryOk = t.r2.exists(r => r.mapped && r.mapq >= minPrimaryMapq && (incDupes || !r.duplicate) && (incQcFails || r.pf))
 
     if (!r1PrimaryOk && !r2PrimaryOk) None else Some(
       Template(
