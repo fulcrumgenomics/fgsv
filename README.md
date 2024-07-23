@@ -47,8 +47,9 @@ fgsv SvPileup \
 The tool [`fgsv SvPileup`](https://github.com/fulcrumgenomics/fgsv/blob/main/docs/tools/SvPileup.md) takes a queryname-grouped BAM file as input and scans each query group (template) of alignments for structural variant evidence.
 For a simple example: a paired-end read may have one alignment per read—one alignment for read 1 and another alignment for read 2 mapped to different reference sequences supporting a putative translocation.
 
-Primary and supplementary alignments for a template (see the [SAM Format Specification v1](https://samtools.github.io/hts-specs/SAMv1.pdf) for more information) are used to construct a “chain” of aligned sub-segments in a way that honors the sub-segments mapping locations and strandedness in relation to the reference sequence.
+Primary and supplementary alignments for a template are used to construct a “chain” of aligned sub-segments in a way that honors the sub-segments mapping locations and strandedness in relation to the reference sequence.
 The aligned sub-segments in a chain relate to each other through typical alignment mechanisms like insertions and deletions but also contain information about the relative orientation of the sub-segment to the reference sequence and importantly, jumps between reference sequences which could indicate translocations.
+See the [SAM Format Specification v1](https://samtools.github.io/hts-specs/SAMv1.pdf) for more information on how reads relate to alignments.
 
 For each chain of aligned sub-segments per template, outlier jumps are collected where the minimum inter-segment jump distance within a read must be 100bp (by default) or greater, and the minimum inter-read jump distance (e.g. between reads in a paired-end read) must be 1000bp (by default) or greater.
 At locations where these jumps occur, breakpoints are marked and given a unique ID based on the loci of the breakends and the directionality of the left and right strands leading into each breakend.
