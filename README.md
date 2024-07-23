@@ -34,7 +34,7 @@ These tools are not meant to be used as a structural variant calling toolchain i
 > [!IMPORTANT]
 > All point intervals (1-length) reported by this toolkit are 1-based inclusive from the perspective of the reference sequence unless otherwise documented.
 
-### `fgsv SvPileup`
+### `SvPileup`
 
 Collates pileups of reads over breakpoint events.
 
@@ -58,7 +58,7 @@ This process creates a collection of candidate breakpoint locations.
 
 The tool outputs a table of candidate breakpoints and a BAM file with each alignment tagged with the ID of the breakpoint it supports (if any).
 
-### `fgsv AggregateSvPileup`
+### `AggregateSvPileup`
 
 Aggregates and merges pileups that are likely to support the same breakpoint.
 
@@ -82,7 +82,7 @@ One shortcoming of the existing behavior, which should be corrected at some poin
 
 The tool outputs a table of aggregated breakpoints and a modified copy of the input BAM file where each alignment is tagged with the ID of the aggregate breakpoint it supports (if any).
 
-### `fgsv AggregateSvPileupToBedPE`
+### `AggregateSvPileupToBedPE`
 
 Converts the output of `AggregateSvPileup` to the [BEDPE format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).
 
