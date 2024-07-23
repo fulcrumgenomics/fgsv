@@ -44,7 +44,7 @@ fgsv SvPileup \
     --output sample.svpileup
 ```
 
-The tool [`fgsv SvPileup`](https://github.com/fulcrumgenomics/fgsv/blob/main/docs/tools/SvPileup.md) takes a queryname-grouped BAM file as input and scans each group of alignments for structural variant evidence.
+The tool [`fgsv SvPileup`](https://github.com/fulcrumgenomics/fgsv/blob/main/docs/tools/SvPileup.md) takes a queryname-grouped BAM file as input and scans each query group (template) of alignments for structural variant evidence.
 For a simple example: a paired-end read may have one alignment per read—one alignment for read 1 and another alignment for read 2 mapped to different reference sequences supporting a putative translocation.
 
 Primary and supplementary alignments for a template (see the [SAM Format Specification v1](https://samtools.github.io/hts-specs/SAMv1.pdf) for more information) are used to construct a “chain” of aligned sub-segments in a way that honors the sub-segments mapping locations and strandedness in relation to the reference sequence.
