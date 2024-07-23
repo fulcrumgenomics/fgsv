@@ -45,17 +45,17 @@ fgsv SvPileup \
 ```
 
 The tool [`fgsv SvPileup`](https://github.com/fulcrumgenomics/fgsv/blob/main/docs/tools/SvPileup.md) takes a queryname-grouped BAM file as input and scans each group of alignments for structural variant evidence.
-For a simple example, a paired-end read may have one alignment per read: one alignment for read 1 and another alignment for read 2 mapped to different reference sequences.
+For a simple example: a paired-end read may have one alignment per read—one alignment for read 1 and another alignment for read 2 mapped to different reference sequences supporting a putative translocation.
 
 Primary and supplementary alignments for a template (see the [SAM Format Specification v1](https://samtools.github.io/hts-specs/SAMv1.pdf) for more information) are used to construct a “chain” of aligned sub-segments in a way that honors the sub-segments mapping locations and strandedness in relation to the reference sequence.
-These aligned sub-segments in a chain relate to each other through typical alignment mechanisms like insertions and deletions but also contain information about the relative orientation of the sub-segment to the reference sequence and importantly, jumps between reference sequences such as translocations between contigs or chromosomes.
+The aligned sub-segments in a chain relate to each other through typical alignment mechanisms like insertions and deletions but also contain information about the relative orientation of the sub-segment to the reference sequence and importantly, jumps between reference sequences which could indicate translocations.
 
-For each chain of aligned sub-segments per template, outlier jumps are collected where the minimum inter-segment distance within a read must be 100bp (by default) or greater, and the minimum inter-read distance across reads (e.g. between reads in a paired-end read) must be 1000bp (by default) or greater.
-At locations where these jumps occur, breakpoints are marked and the breakpoints are given a unique ID based on the positions of the breakends and the directionality of the left and right strands leading into each breakend.
-In the case where there is both evidence for a split-read alignment and inter-read jump, the split-read alignment evidence is favored since it gives a precise breakpoint.
-
+For each chain of aligned sub-segments per template, outlier jumps are collected where the minimum inter-segment jump distance within a read must be 100bp (by default) or greater, and the minimum inter-read jump distance (e.g. between reads in a paired-end read) must be 1000bp (by default) or greater.
+At locations where these jumps occur, breakpoints are marked and given a unique ID based on the loci of the breakends and the directionality of the left and right strands leading into each breakend.
+In the case where there is both evidence for a split-read jump and inter-read jump, the split-read alignment evidence is favored since it gives a precise breakpoint.
 This process creates a collection of candidate breakpoint locations.
-The output of this tool is a metrics file tabulating the breakpoints and a BAM file with each breakpoint-supporting alignment having custom tags that indicate which breakpoint the alignment supports.
+
+The tool outputs a table of candidate breakpoints and a BAM file with each alignment tagged with the ID of the breakpoint it supports (if any).
 
 ### `fgsv AggregateSvPileup`
 
@@ -68,14 +68,14 @@ fgsv AggregateSvPileup \
     --output sample.svpileup.aggregate.txt
 ```
 
-The tool [`fgsv AggregateSvPileup`](https://github.com/fulcrumgenomics/fgsv/blob/main/docs/tools/AggregateSvPileup.md) is used to coalesce nearby breakpoints into one event if they appear to support one true breakpoint.
+The tool [`fgsv AggregateSvPileup`](https://github.com/fulcrumgenomics/fgsv/blob/main/docs/tools/AggregateSvPileup.md) is used to aggregate nearby breakpoints into one event if they appear to support one true breakpoint.
 This polishing step preserves true positive breakpoint events and is intended to reduce the number of false positive breakpoint events.
 
-Because of variability in typical short-read alignments due to somatic mutation, sequencing error, or alignment artifact, evidence for a single breakpoint may span a few loci near the true breakend loci.
-For a more extreme example, if a true breakpoint only has paired read evidence, then the breakpoint could coincidentally occur within the unobserved bases between read 1 and read 2 in a pair.
-In other cases and due to sequence similarity or homology between each breakend locus, it is not always possible to locate the exact nucleotide point where the breakends occur, and instead a plausible region may exist that supports either breakend loci and evidence could be merged within this region.
+Aggregating breakpoints is often necessary because of variability in typical short-read alignments caused by somatic mutation, sequencing error, alignment artifact, or breakend sequence similarity/homology to the reference sequence.
+Variability in short-read alignments means that it is not always possible to locate the exact nucleotide coordinate where either breakends in a breakpoint occur.
+Instead, either breakend of a true breakpoint may map to a plausible region (instead of a point coordinate) and when this happens, the cluster of breakends could be aggregated to build up support for one true breakpoint.
 
-Adjacent breakpoints are only merged if their left breakends map to the same strand of the same reference sequence, their right breakends map to the same strand of the same reference sequence, and their left and right genomic breakend positions are both within a given length threshold of 10bp (by default).
+Clustered breakpoints are only merged if their left breakends map to the same strand of the same reference sequence, their right breakends map to the same strand of the same reference sequence, and their left and right genomic breakend positions are both within a given length threshold of 10bp (by default).
 
 One shortcoming of the existing behavior, which should be corrected at some point, is that intra-read breakpoint evidence is considered similarly to inter-pair breakpoint evidence even though intra-read breakpoint evidence often has nucleotide-level alignment resolution and inter-pair breakpoint evidence does not.
 
