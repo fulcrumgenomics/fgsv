@@ -82,7 +82,7 @@ One shortcoming of the existing behavior, which should be corrected at some poin
 
 The tool outputs a table of aggregated breakpoints and a modified copy of the input BAM file where each alignment is tagged with the ID of the aggregate breakpoint it supports (if any).
 
-## `fgsv AggregateSvPileupToBedPE`
+### `fgsv AggregateSvPileupToBedPE`
 
 Converts the output of `AggregateSvPileup` to the [BEDPE format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).
 
