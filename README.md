@@ -84,7 +84,7 @@ The tool outputs a table of aggregated breakpoints and a modified copy of the in
 
 ## `AggregateSvPileupToBedPE`
 
-Convert the output of `AggregateSvPileup` to BEDPE.
+Converts the output of `AggregateSvPileup` to the [BEDPE format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).
 
 ```console
 fgsv AggregateSvPileupToBedPE \
@@ -92,7 +92,7 @@ fgsv AggregateSvPileupToBedPE \
     --output sample.svpileup.aggregate.bedpe
 ```
 
-The tool [`fgsv AggregateSvPileupToBedPE`](https://github.com/fulcrumgenomics/fgsv/blob/main/docs/tools/AggregateSvPileupToBedPE.md) is used to convert the output of `AggregateSvPileup` to the [BEDPE format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format) so that it can be viewed in [IGV](https://igv.org/) and other BEDPE-supporting genome browsers.
+The tool [`fgsv AggregateSvPileupToBedPE`](https://github.com/fulcrumgenomics/fgsv/blob/main/docs/tools/AggregateSvPileupToBedPE.md) is used to convert the output of `AggregateSvPileup` to BEDPE so that it can be viewed in [IGV](https://igv.org/) and other BEDPE-supporting genome browsers.
 For example:
 
 ![BEDPE in IGV](docs/img/fgsv-bedpe.png)
