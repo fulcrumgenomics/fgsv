@@ -29,12 +29,12 @@ Aggregated cluster of breakpoint pileups
 |id|String|Combined ID retaining the IDs of all constituent breakpoints|
 |category|BreakpointCategory|Breakpoint category|
 |left_contig|String|Contig name for left side of breakpoint|
-|left_min_pos|Int|Minimum coordinate of left breakends (1-based)|
-|left_max_pos|Int|Maximum coordinate of left breakends (1-based)|
+|left_min_pos|Int|Minimum coordinate of left breakends (1-based inclusive)|
+|left_max_pos|Int|Maximum coordinate of left breakends (1-based inclusive)|
 |left_strand|Char|Strand at left breakends|
 |right_contig|String|Contig name for right side of breakpoint|
-|right_min_pos|Int|Minimum coordinate of right breakends (1-based)|
-|right_max_pos|Int|Maximum coordinate of right breakends (1-based)|
+|right_min_pos|Int|Minimum coordinate of right breakends (1-based inclusive)|
+|right_max_pos|Int|Maximum coordinate of right breakends (1-based inclusive)|
 |right_strand|Char|Strand at right breakends|
 |split_reads|Int|Total number of split reads supporting the breakpoints in the cluster|
 |read_pairs|Int|Total number of read pairs supporting the breakpoints in the cluster|
@@ -82,10 +82,10 @@ the only information comes from read-pairs and the breakpoint information should
 |------|----|-----------|
 |id|String|An ID assigned to the breakpoint that can be used to lookup supporting reads in the BAM.|
 |left_contig|String|The contig of chromosome on which the left hand side of the breakpoint exists.|
-|left_pos|Int|The position (possibly imprecise) of the left-hand breakend (1-based).|
+|left_pos|Int|The position (possibly imprecise) of the left-hand breakend (1-based, inclusive).|
 |left_strand|Char|The strand of the left-hand breakend; sequence reads would traverse this strand                      in order to arrive at the breakend and transit into the right-hand side of the breakpoint.|
 |right_contig|String|The contig of chromosome on which the left hand side of the breakpoint exists.|
-|right_pos|Int|The position (possibly imprecise) of the right-hand breakend (1-based).|
+|right_pos|Int|The position (possibly imprecise) of the right-hand breakend (1-based, inclusive).|
 |right_strand|Char|The strand of the right-hand breakend;. sequence reads would continue reading onto                      this strand after transiting the breakpoint from the left breakend|
 |split_reads|Int|The number of templates/inserts with split-read alignments that identified this breakpoint.|
 |read_pairs|Int|The number of templates/inserts with read-pair alignments (and without split-read alignments)                      that identified this breakpoint.|
