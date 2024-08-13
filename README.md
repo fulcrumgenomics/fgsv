@@ -25,11 +25,11 @@ More detailed documentation can be found in the [docs folder](docs/01_Introducti
 
 ## Introduction to the `fgsv` Toolkit
 
-The `fgsv` toolkit contains tools for effective structural variant debugging.
-These tools are not meant to be used as a structural variant calling toolchain in-and-of-itself; instead, it is better to think of `fgsv` as an effective breakpoint detection and structural variant exploration toolkit.
+The `fgsv` toolkit contains tools for effective structural variant investigation.
+These tools are not meant to be used as a structural variant calling toolchain in-and-of-itself; instead, it is better to think of `fgsv` as a breakpoint detection and structural variant exploration toolkit.
 
 > [!NOTE]
-> When describing structural variation, we use the term **breakpoint** to mean a junction between two loci and the term **breakend** to refer to one of the loci in a breakpoint.
+> When describing structural variation, we use the term **breakpoint** to mean a junction between two loci and the term **breakend** to refer to one of the loci on one side of a breakpoint.
 
 > [!IMPORTANT]
 > All point intervals (1-length) reported by this toolkit are 1-based inclusive from the perspective of the reference sequence unless otherwise documented.
@@ -45,7 +45,7 @@ fgsv SvPileup \
 ```
 
 The tool [`fgsv SvPileup`](https://github.com/fulcrumgenomics/fgsv/blob/main/docs/tools/SvPileup.md) takes a queryname-grouped BAM file as input and scans each query group (template) of alignments for structural variant evidence.
-For a simple example: a paired-end read may have one alignment per read—one alignment for read 1 and another alignment for read 2 mapped to different reference sequences supporting a putative translocation.
+For a simple example: a paired-end read may have one alignment per read (one alignment for read 1 and another alignment for read 2) mapped to different reference sequences supporting a putative translocation.
 
 Primary and supplementary alignments for a template are used to construct a “chain” of aligned sub-segments in a way that honors the sub-segments mapping locations and strandedness as compared to the reference sequence.
 The aligned sub-segments in a chain relate to each other through typical alignment mechanisms like insertions and deletions but also contain information about the relative orientation of the sub-segment to the reference sequence and importantly, jumps between reference sequences which could indicate translocations.
