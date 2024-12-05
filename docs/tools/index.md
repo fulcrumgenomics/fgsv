@@ -4,7 +4,7 @@ title: fgsv tools
 
 # fgsv tools
 
-The following tools are available in fgsv version 0.2.0-3f52590.
+The following tools are available in fgsv version 0.2.1-4d81b1e.
 ## Breakpoint and SV Tools
 
 Primary tools for calling and transforming breakpoints and SVs.
