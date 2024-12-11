@@ -91,4 +91,6 @@ Split read evidence will be returned in favor of across-read-pair evidence when 
 |slop|s|Int|The number of bases of slop to allow when determining which records to track for the left or right side of an aligned segment when merging segments.|Optional|1|5|
 |targets-bed|t|FilePath|Optional bed file of target regions|Optional|1||
 |targets-bed-requirement|T|Requirement|Requirement on if each side of the breakpoint must overlap a target.  Will always annotate each side of the breakpoint.|Optional|1|AnnotateOnly|
+|include-duplicates||Boolean|Whether to include duplicate marked records for breakpoint pileup or not.|Optional|1|false|
+|include-qc-fails||Boolean|Whether to include QC failed records for breakpoint pileup or not.|Optional|1|false|
 

@@ -332,7 +332,7 @@ class SvPileupTest extends UnitSpec {
       r("chr1", 300, Plus, r=2, cigar="100M", supp=false, mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, includeDuplicates = true, includeQcFails = true).value shouldBe template
   }
 
   it should "do nothing to a template with high mapq primaries and supplementaries" in {
@@ -343,7 +343,7 @@ class SvPileupTest extends UnitSpec {
       r("chr1", 120, Minus, r=2, cigar="30M70S", supp=true,  mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, includeDuplicates = true, includeQcFails = true).value shouldBe template
   }
 
   it should "remove a low quality supplementary record" in {
@@ -354,7 +354,7 @@ class SvPileupTest extends UnitSpec {
       r("chr1", 120, Minus, r=2, cigar="30M70S", supp=true,  mapq=1),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template.copy(r2Supplementals=Nil)
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, includeDuplicates = true, includeQcFails = true).value shouldBe template.copy(r2Supplementals=Nil)
   }
 
   it should "remove all evidence of R2 if the primary mapping is low quality" in {
@@ -366,7 +366,7 @@ class SvPileupTest extends UnitSpec {
     )
 
     val expected = template.copy(r2=None, r2Supplementals=Nil)
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe expected
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, includeDuplicates = true, includeQcFails = true).value shouldBe expected
   }
 
   it should "return None if both R1 and R2 primaries are low quality" in {
@@ -377,7 +377,7 @@ class SvPileupTest extends UnitSpec {
       r("chr1", 120, Minus, r=2, cigar="30M70S", supp=true,  mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20) shouldBe None
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, includeDuplicates = true, includeQcFails = true) shouldBe None
   }
 
   it should "remove an unmapped R2" in {
@@ -387,7 +387,7 @@ class SvPileupTest extends UnitSpec {
       Seq(r("chr1", 100, Plus, r=2, cigar="100M",   supp=false, mapq=0)).tapEach(_.unmapped = true).head,
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template.copy(r2=None)
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, includeDuplicates = true, includeQcFails = true).value shouldBe template.copy(r2=None)
   }
 
   it should "handle a template with fragment data with high mapping quality" in {
@@ -396,7 +396,7 @@ class SvPileupTest extends UnitSpec {
       r("chr7", 800, Plus,  r=0, cigar="50S50M", supp=true,  mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe template
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, includeDuplicates = true, includeQcFails = true).value shouldBe template
   }
 
   it should "remove low mapq supplementary records from a fragment template" in {
@@ -407,7 +407,7 @@ class SvPileupTest extends UnitSpec {
     )
 
     val expected = template.copy(r1Supplementals = template.r1Supplementals.filter(_.start != 800))
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20).value shouldBe expected
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, includeDuplicates = true, includeQcFails = true).value shouldBe expected
   }
 
   it should "return None for a fragment template with a low quality primary mapping" in {
@@ -417,7 +417,183 @@ class SvPileupTest extends UnitSpec {
       r("chr7", 820, Plus,  r=0, cigar="70S30M",    supp=true,  mapq=50),
     )
 
-    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20) shouldBe None
+    SvPileup.filterTemplate(template, minPrimaryMapq=30, minSupplementaryMapq=20, includeDuplicates = true, includeQcFails = true) shouldBe None
+  }
+
+  it should s"ignore records for the entire ordinal where R1 (true) or R2 (false) are marked as duplicates" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr7", 800, Plus,  r=1, cigar="50S50M", supp=true,  mapq=50)
+    val r2supp = r("chr7", 800, Plus,  r=2, cigar="50S50M", supp=true,  mapq=50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeQcFails = true).value shouldBe template
+
+    r1.duplicate = true
+    r2.duplicate = false
+
+    val expected = template.copy(r1=None, r1Supplementals = Nil, r1Secondaries = Nil)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeQcFails = true).value shouldBe expected
+  }
+
+  it should s"ignore records for the entire ordinal where R1 (false) or R2 (true) are marked as duplicates" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr7", 800, Plus,  r=1, cigar="50S50M", supp=true,  mapq=50)
+    val r2supp = r("chr7", 800, Plus,  r=2, cigar="50S50M", supp=true,  mapq=50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeQcFails = true).value shouldBe template
+
+    r1.duplicate = false
+    r2.duplicate = true
+
+    val expected = template.copy(r2=None, r2Supplementals = Nil, r2Secondaries = Nil)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeQcFails = true).value shouldBe expected
+  }
+
+  it should s"ignore all records where R1 (true) or R2 (true) are both marked as duplicates" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr7", 800, Plus,  r=1, cigar="50S50M", supp=true,  mapq=50)
+    val r2supp = r("chr7", 800, Plus,  r=2, cigar="50S50M", supp=true,  mapq=50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeQcFails = true).value shouldBe template
+
+    r1.duplicate = true
+    r2.duplicate = true
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeQcFails = true) shouldBe None
+  }
+
+  it should "ignore duplicate supplementals when asked to" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = true, mapq = 50)
+    val r2supp = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = true, mapq = 50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeQcFails = true).value shouldBe template
+
+    r1supp.duplicate = true
+    r2supp.duplicate = true
+
+    val expected = t(r1, r2)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeQcFails = true).value shouldBe expected
+  }
+
+  it should "not ignore duplicate records when asked to" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = true, mapq = 50)
+    val r2supp = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = true, mapq = 50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true, includeQcFails = true).value shouldBe template
+
+    r1.duplicate = true
+    r2.duplicate = true
+    r1supp.duplicate = true
+    r2supp.duplicate = true
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true, includeQcFails = true).value shouldBe template
+  }
+
+  it should s"ignore records for the entire ordinal where R1 (false) or R2 (true) are marked as failing QC" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr7", 800, Plus,  r=1, cigar="50S50M", supp=true,  mapq=50)
+    val r2supp = r("chr7", 800, Plus,  r=2, cigar="50S50M", supp=true,  mapq=50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true).value shouldBe template
+
+    r1.pf = false
+    r2.pf = true
+
+    val expected = template.copy(r1=None, r1Supplementals = Nil, r1Secondaries = Nil)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true).value shouldBe expected
+  }
+
+  it should s"ignore records for the entire ordinal where R1 (true) or R2 (false) are marked as failing QC" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr7", 800, Plus,  r=1, cigar="50S50M", supp=true,  mapq=50)
+    val r2supp = r("chr7", 800, Plus,  r=2, cigar="50S50M", supp=true,  mapq=50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true).value shouldBe template
+
+    r1.pf = true
+    r2.pf = false
+
+    val expected = template.copy(r2=None, r2Supplementals = Nil, r2Secondaries = Nil)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true).value shouldBe expected
+  }
+
+  it should s"ignore all records where R1 (false) or R2 (false) are both marked as failing QC" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr7", 800, Plus,  r=1, cigar="50S50M", supp=true,  mapq=50)
+    val r2supp = r("chr7", 800, Plus,  r=2, cigar="50S50M", supp=true,  mapq=50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true).value shouldBe template
+
+    r1.pf = false
+    r2.pf = false
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true) shouldBe None
+  }
+
+  it should "ignore QC failed supplementals when asked to" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = true, mapq = 50)
+    val r2supp = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = true, mapq = 50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true).value shouldBe template
+
+    r1supp.pf = false
+    r2supp.pf = false
+
+    val expected = t(r1, r2)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true).value shouldBe expected
+  }
+
+  it should "not ignore passing QC records when asked to" in {
+    val r1 = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = false, mapq = 50)
+    val r2 = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = false, mapq = 50)
+    val r1supp = r("chr1", 100, Plus, r = 1, cigar = "100M", supp = true, mapq = 50)
+    val r2supp = r("chr1", 300, Plus, r = 2, cigar = "100M", supp = true, mapq = 50)
+
+    val template = t(r1, r2, r1supp, r2supp)
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true, includeQcFails = true).value shouldBe template
+
+    r1.pf = false
+    r2.pf = false
+    r1supp.pf = false
+    r2supp.pf = false
+
+    SvPileup.filterTemplate(template, minPrimaryMapq = 30, minSupplementaryMapq = 20, includeDuplicates = true, includeQcFails = true).value shouldBe template
   }
 
   /** Writes the given BAM records to a BAM file */
