@@ -81,7 +81,7 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
     writer.write(record)
     writer.close()
 
-    val fields: Seq[String] = classOf[BedPE].getDeclaredFields.map(_.getName).toIndexedSeq
+    val fields: Seq[String] = record.names
     val records = DelimitedDataParser(output, delimiter = '\t', header = fields).toSeq
     records.length shouldBe 1
     val actual = fields.map(field => records.head.get[String](field).value)
@@ -108,7 +108,7 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
 
     new AggregateSvPileupToBedPE(input = input, output = output).execute()
 
-    val fields: Seq[String] = classOf[BedPE].getDeclaredFields.map(_.getName).toIndexedSeq
+    val fields: Seq[String] = test_bed_pe.names
     val records = DelimitedDataParser(output, delimiter = '\t', header = fields).toSeq
     records.length shouldBe 1
     val actual = fields.map(field => records.head.get[String](field).value)
