@@ -407,22 +407,36 @@ object SvPileup extends LazyLogging {
         (positiveStrand && seg2.range.start < seg1.range.end) ||
         (!positiveStrand && seg1.range.start < seg2.range.end)
       )) || {
-        // If the contig is circular and the segments span the origin, treat them as contiguous when
-        // calculating the distance between them.
+        // Calculate the inner distance between segments, accounting for circular contigs.
+        // For circular contigs (e.g., bacterial chromosomes, mitochondria), reads may span the origin
+        // (position 1), so we need to calculate distance "around" the circle rather than linearly.
+        //
+        // For example, on a 16kb circular contig:
+        //   - Segment 1: positions 15,900-16,000 (near end)
+        //   - Segment 2: positions 1-100 (near start)
+        //   - Linear distance would be ~15,800 bp (appears as a large deletion)
+        //   - Circular distance is actually ~100 bp (normal spanning read)
         val innerDistance = if (isCircular && positiveStrand && seg2.range.end <= seg1.range.start) {
+          // Positive strand: seg2 wraps around to the beginning (spans origin)
+          // Distance = bases from seg1.end to contig end + bases from contig start to seg2.start
           require(seg1.range.end <= contig.length)
           (contig.length - seg1.range.end) + seg2.range.start
         }
         else if (isCircular && !positiveStrand && seg1.range.end <= seg2.range.start) {
+          // Negative strand: seg1 wraps around to the beginning (spans origin)
+          // Distance calculation mirrors the positive strand case
           require(seg2.range.end <= contig.length)
           (contig.length - seg2.range.end) + seg1.range.start
         }
         else if (seg1.range.start <= seg2.range.start) {
+          // Normal case: segments in order, calculate linear inner distance
           seg2.range.start - seg1.range.end
         }
         else {
+          // Segments out of order (backwards), calculate distance
           seg1.range.start - seg2.range.end
         }
+        // Choose distance threshold based on whether segments are from same read or different reads
         val maxDistance = if (seg1.origin.isInterRead(seg2.origin)) maxBetweenReadDistance else maxWithinReadDistance
         innerDistance > maxDistance
       }
