@@ -13,6 +13,7 @@ the type of each field/column is given, including two commonly used types:
 |Metric Type|Description|
 |-----------|-----------|
 |[AggregatedBreakpointPileup](#aggregatedbreakpointpileup)|Aggregated cluster of breakpoint pileups|
+|[BedPE](#bedpe)|A simple BEDPE record as defined by [`bedtools`](https://bedtools|
 |[BreakpointPileup](#breakpointpileup)|Represents a pileup of evidence (reads, read-pairs) for a breakpoint|
 |[MergedPileup](#mergedpileup)||
 
@@ -48,6 +49,25 @@ Aggregated cluster of breakpoint pileups
 |right_overlaps_target|Boolean|True if the right aggregated region overlaps a target region|
 |left_targets|Option[String]|The comma-delimited list of target names overlapping the left breakpoint|
 |right_targets|Option[String]|The comma-delimited list of target names overlapping the right breakpoint|
+
+
+### BedPE
+
+A simple BEDPE record as defined by [`bedtools`](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).Future compatibility could be implemented for supporting [10x flavored BEDPE files](https://github.com/igvteam/igv/wiki/BedPE-Support).
+
+
+|Column|Type|Description|
+|------|----|-----------|
+|chrom1|String|The reference sequence name for the first interval.|
+|start1|Int|The 0-based position for the start of the first interval.|
+|end1|Int|The 0-based half-open position for the end of the first interval.|
+|chrom2|String|The reference sequence name for the second interval.|
+|start2|Int|The 0-based position for the start of the second interval.|
+|end2|Int|The 0-based half-open position for the end of the second interval.|
+|name|String|The name of the paired interval record.|
+|score|Int|The score of the paired interval record.|
+|strand1|Strand|The strand for the first interval.|
+|strand2|Strand|The strand for the second interval.|
 
 
 ### BreakpointPileup
