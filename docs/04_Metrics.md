@@ -13,7 +13,6 @@ the type of each field/column is given, including two commonly used types:
 |Metric Type|Description|
 |-----------|-----------|
 |[AggregatedBreakpointPileup](#aggregatedbreakpointpileup)|Aggregated cluster of breakpoint pileups|
-|[BedPE](#bedpe)|A simple BEDPE record as defined by [`bedtools`](https://bedtools|
 |[BreakpointPileup](#breakpointpileup)|Represents a pileup of evidence (reads, read-pairs) for a breakpoint|
 |[MergedPileup](#mergedpileup)||
 
@@ -51,25 +50,6 @@ Aggregated cluster of breakpoint pileups
 |right_targets|Option[String]|The comma-delimited list of target names overlapping the right breakpoint|
 
 
-### BedPE
-
-A simple BEDPE record as defined by [`bedtools`](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).Future compatibility could be implemented for supporting [10x flavored BEDPE files](https://github.com/igvteam/igv/wiki/BedPE-Support).
-
-
-|Column|Type|Description|
-|------|----|-----------|
-|chrom1|String|The reference sequence name for the first interval.|
-|start1|Int|The 0-based position for the start of the first interval.|
-|end1|Int|The 0-based half-open position for the end of the first interval.|
-|chrom2|String|The reference sequence name for the second interval.|
-|start2|Int|The 0-based position for the start of the second interval.|
-|end2|Int|The 0-based half-open position for the end of the second interval.|
-|name|String|The name of the paired interval record.|
-|score|Int|The score of the paired interval record.|
-|strand1|Strand|The strand for the first interval.|
-|strand2|Strand|The strand for the second interval.|
-
-
 ### BreakpointPileup
 
 Represents a pileup of evidence (reads, read-pairs) for a breakpoint.  If `split_reads` is greater than
@@ -81,12 +61,12 @@ the only information comes from read-pairs and the breakpoint information should
 |Column|Type|Description|
 |------|----|-----------|
 |id|String|An ID assigned to the breakpoint that can be used to lookup supporting reads in the BAM.|
-|left_contig|String|The contig of chromosome on which the left hand side of the breakpoint exists.|
+|left_contig|String|The contig or chromosome on which the left-hand side of the breakpoint exists.|
 |left_pos|Int|The position (possibly imprecise) of the left-hand breakend (1-based, inclusive).|
 |left_strand|Char|The strand of the left-hand breakend; sequence reads would traverse this strand                      in order to arrive at the breakend and transit into the right-hand side of the breakpoint.|
-|right_contig|String|The contig of chromosome on which the left hand side of the breakpoint exists.|
+|right_contig|String|The contig or chromosome on which the right-hand side of the breakpoint exists.|
 |right_pos|Int|The position (possibly imprecise) of the right-hand breakend (1-based, inclusive).|
-|right_strand|Char|The strand of the right-hand breakend;. sequence reads would continue reading onto                      this strand after transiting the breakpoint from the left breakend|
+|right_strand|Char|The strand of the right-hand breakend; sequence reads would continue reading onto                      this strand after transiting the breakpoint from the left breakend|
 |split_reads|Int|The number of templates/inserts with split-read alignments that identified this breakpoint.|
 |read_pairs|Int|The number of templates/inserts with read-pair alignments (and without split-read alignments)                      that identified this breakpoint.|
 |total|Int|The total number of templates/inserts that identified this breakpoint|
