@@ -10,13 +10,13 @@ import com.fulcrumgenomics.util.Metric
  * the only information comes from read-pairs and the breakpoint information should be considered imprecise.
  *
  * @param id            an ID assigned to the breakpoint that can be used to lookup supporting reads in the BAM.
- * @param left_contig   the contig of chromosome on which the left hand side of the breakpoint exists.
+ * @param left_contig   the contig or chromosome on which the left-hand side of the breakpoint exists.
  * @param left_pos      the position (possibly imprecise) of the left-hand breakend (1-based, inclusive).
  * @param left_strand   the strand of the left-hand breakend; sequence reads would traverse this strand
  *                      in order to arrive at the breakend and transit into the right-hand side of the breakpoint.
- * @param right_contig  the contig of chromosome on which the left hand side of the breakpoint exists.
+ * @param right_contig  the contig or chromosome on which the right-hand side of the breakpoint exists.
  * @param right_pos     the position (possibly imprecise) of the right-hand breakend (1-based, inclusive).
- * @param right_strand  the strand of the right-hand breakend;. sequence reads would continue reading onto
+ * @param right_strand  the strand of the right-hand breakend; sequence reads would continue reading onto
  *                      this strand after transiting the breakpoint from the left breakend
  * @param split_reads   the number of templates/inserts with split-read alignments that identified this breakpoint.
  * @param read_pairs    the number of templates/inserts with read-pair alignments (and without split-read alignments)

@@ -41,7 +41,7 @@ import scala.collection.mutable
     |If a BED file of target regions is provided, each aggregated pileup is annotated with whether its left and
     |right sides overlap a target region.  Additionally, the names of the overlapping target regions will be
     |annotated, overwriting any values from the `SvPileup` input.  If no target regions are provided, then the names
-    |of the overlapping target regions are copied from the `SvPiluep` input (if present).
+    |of the overlapping target regions are copied from the `SvPileup` input (if present).
     |
     |The output file is a tab-delimited table with one record per aggregated cluster of pileups. Aggregated
     |pileups are reported with the minimum and maximum (inclusive) coordinates of all pileups in the cluster, a
@@ -155,11 +155,24 @@ object AggregateSvPileup {
   /**
    * Converts a set of pairwise neighbor relationships to a set of clusters, where each cluster consists of breakpoints
    * that can be joined into a connected path via pairwise neighbor relationships.
+   *
+   * This implements a breadth-first search (BFS) to find connected components in an undirected graph, where pileups
+   * are nodes and neighbor relationships are edges. This enables transitive clustering: if A is near B and B is near C,
+   * then A, B, and C are all in the same cluster, even if A and C are not directly neighbors.
+   *
+   * Example:
+   *   Pileup A at chr1:100, B at chr1:105, C at chr1:110 with maxDist=10
+   *   A-B distance = 5 (neighbors), B-C distance = 5 (neighbors), A-C distance = 10 (neighbors)
+   *   All three cluster together.
+   *
+   *   But if D is at chr1:125:
+   *   C-D distance = 15 (not neighbors), so D forms a separate cluster.
+   *
    * @param pileupToNeighbors Map of pileup to its set of neighbors
-   * @return The set of pileup clusters
+   * @return The set of pileup clusters, where each cluster is a connected component
    */
   def toClusters(pileupToNeighbors: Map[BreakpointPileup, PileupGroup]): Seq[PileupGroup] = {
-    // The following finds connnected components in a breadth first manner
+    // Find connected components using breadth-first search
     val visited    = scala.collection.mutable.HashSet[BreakpointPileup]()
     val components = IndexedSeq.newBuilder[PileupGroup]
     pileupToNeighbors.keys.foreach { rootPileup =>
