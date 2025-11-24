@@ -142,7 +142,7 @@ object tools extends CommonModule with PublishModule with ReleaseModule {
 
   override def ivyDeps = Agg(
     ivy"org.scala-lang:scala-compiler:${scalaVersion()}",
-    ivy"com.fulcrumgenomics:fgbio_2.13:2.2.1".excludeOrg(orgsToExclude:_*)
+    ivy"com.fulcrumgenomics:fgbio_2.13:3.1.0".excludeOrg(orgsToExclude:_*)
   )
 
   object test extends SbtModuleTests {
