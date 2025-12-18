@@ -36,6 +36,6 @@ bash src/scripts/build_tool_docs.sh
 ```
 
 [metrics-link]: 04_Metrics.md
-[tools-link]:   05_Tools.md
+[tools-link]:   tools/index.md
 [scala-link]:   https://www.scala-lang.org/
 [fgbio-link]:   https://github.com/fulcrumgenomics/fgbio/
