@@ -122,7 +122,9 @@ class SvPileup
    |side of an aligned segment when merging segments.""") slop: Int = 5,
  @arg(flag='t', doc="Optional bed file of target regions") targetsBed: Option[FilePath] = None,
  @arg(flag='T', doc="Requirement on if each side of the breakpoint must overlap a target.  Will always annotate each side of the breakpoint.")
- targetsBedRequirement: TargetBedRequirement.Requirement = TargetBedRequirement.AnnotateOnly
+ targetsBedRequirement: TargetBedRequirement.Requirement = TargetBedRequirement.AnnotateOnly,
+ @arg(doc="Whether to include duplicate marked records for breakpoint pileup or not.") val includeDuplicates: Boolean = false,
+ @arg(doc="Whether to include QC failed records for breakpoint pileup or not.") val includeQcFails: Boolean = false,
 ) extends SvTool {
 
   import SvPileup._
@@ -145,7 +147,15 @@ class SvPileup
 
     Bams.templateIterator(source)
       .tapEach(t => progress.record(t.allReads.next()))
-      .flatMap(template => filterTemplate(template, minPrimaryMapq=minPrimaryMappingQuality, minSupplementaryMapq=minSupplementaryMappingQuality))
+      .flatMap { template =>
+        filterTemplate(
+          template,
+          minPrimaryMapq       = minPrimaryMappingQuality,
+          minSupplementaryMapq = minSupplementaryMappingQuality,
+          includeDuplicates    = includeDuplicates,
+          includeQcFails       = includeQcFails,
+        )
+      }
       .foreach { template =>
         // Find the breakpoints
         val evidences = findBreakpoints(
@@ -297,18 +307,25 @@ object SvPileup extends LazyLogging {
    */
   def filterTemplate(t: Template,
                      minPrimaryMapq: Int,
-                     minSupplementaryMapq: Int): Option[Template] = {
-    val r1PrimaryOk = t.r1.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
-    val r2PrimaryOk = t.r2.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
+                     minSupplementaryMapq: Int,
+                     includeDuplicates: Boolean = false,
+                     includeQcFails: Boolean = false): Option[Template] = {
+    t.allReads.filter(rec => (includeDuplicates || !rec.duplicate) && (includeQcFails || rec.pf)).toList match {
+      case Nil     => None
+      case records =>
+        val filteredTemplate = Template(records.iterator)
+        val r1PrimaryOk = filteredTemplate.r1.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
+        val r2PrimaryOk = filteredTemplate.r2.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
 
-    if (!r1PrimaryOk && !r2PrimaryOk) None else Some(
-      Template(
-        r1              = if (r1PrimaryOk) t.r1 else None,
-        r2              = if (r2PrimaryOk) t.r2 else None,
-        r1Supplementals = if (r1PrimaryOk) t.r1Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
-        r2Supplementals = if (r2PrimaryOk) t.r2Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
-      )
-    )
+        if (!r1PrimaryOk && !r2PrimaryOk) None else Some(
+          Template(
+            r1              = if (r1PrimaryOk) filteredTemplate.r1 else None,
+            r2              = if (r2PrimaryOk) filteredTemplate.r2 else None,
+            r1Supplementals = if (r1PrimaryOk) filteredTemplate.r1Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
+            r2Supplementals = if (r2PrimaryOk) filteredTemplate.r2Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
+          )
+        )
+    }
   }
 
 
@@ -407,22 +424,36 @@ object SvPileup extends LazyLogging {
         (positiveStrand && seg2.range.start < seg1.range.end) ||
         (!positiveStrand && seg1.range.start < seg2.range.end)
       )) || {
-        // If the contig is circular and the segments span the origin, treat them as contiguous when
-        // calculating the distance between them.
+        // Calculate the inner distance between segments, accounting for circular contigs.
+        // For circular contigs (e.g., bacterial chromosomes, mitochondria), reads may span the origin
+        // (position 1), so we need to calculate distance "around" the circle rather than linearly.
+        //
+        // For example, on a 16kb circular contig:
+        //   - Segment 1: positions 15,900-16,000 (near end)
+        //   - Segment 2: positions 1-100 (near start)
+        //   - Linear distance would be ~15,800 bp (appears as a large deletion)
+        //   - Circular distance is actually ~100 bp (normal spanning read)
         val innerDistance = if (isCircular && positiveStrand && seg2.range.end <= seg1.range.start) {
+          // Positive strand: seg2 wraps around to the beginning (spans origin)
+          // Distance = bases from seg1.end to contig end + bases from contig start to seg2.start
           require(seg1.range.end <= contig.length)
           (contig.length - seg1.range.end) + seg2.range.start
         }
         else if (isCircular && !positiveStrand && seg1.range.end <= seg2.range.start) {
+          // Negative strand: seg1 wraps around to the beginning (spans origin)
+          // Distance calculation mirrors the positive strand case
           require(seg2.range.end <= contig.length)
           (contig.length - seg2.range.end) + seg1.range.start
         }
         else if (seg1.range.start <= seg2.range.start) {
+          // Normal case: segments in order, calculate linear inner distance
           seg2.range.start - seg1.range.end
         }
         else {
+          // Segments out of order (backwards), calculate distance
           seg1.range.start - seg2.range.end
         }
+        // Choose distance threshold based on whether segments are from same read or different reads
         val maxDistance = if (seg1.origin.isInterRead(seg2.origin)) maxBetweenReadDistance else maxWithinReadDistance
         innerDistance > maxDistance
       }

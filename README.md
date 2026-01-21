@@ -14,7 +14,7 @@
 [scala-link]:          https://www.scala-lang.org/
 [license-badge]:       https://img.shields.io/badge/license-MIT-blue.svg
 [license-link]:        https://github.com/fulcrumgenomics/fgsv/blob/main/LICENSE
-[doi-badge]:           https://zenodo.org/badge/454071954.svg
+[doi-badge]:           https://zenodo.org/badge/DOI/10.5281/zenodo.10452647.svg
 [doi-link]:            https://zenodo.org/doi/10.5281/zenodo.10452647
 
 Tools to gather evidence for structural variation via breakpoint detection.
