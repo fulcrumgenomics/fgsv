@@ -150,10 +150,10 @@ class SvPileup
       .flatMap { template =>
         filterTemplate(
           template,
-          minPrimaryMapq=minPrimaryMappingQuality,
-          minSupplementaryMapq=minSupplementaryMappingQuality,
-          includeDuplicates=includeDuplicates,
-          includeQcFails=includeQcFails,
+          minPrimaryMapq       = minPrimaryMappingQuality,
+          minSupplementaryMapq = minSupplementaryMappingQuality,
+          includeDuplicates    = includeDuplicates,
+          includeQcFails       = includeQcFails,
         )
       }
       .foreach { template =>
