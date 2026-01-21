@@ -64,10 +64,7 @@ object AggregateSvPileupToBedPE {
     score: Int,
     strand1: Strand,
     strand2: Strand,
-  ) extends Metric {
-    override def names: Seq[String] = Seq("chrom1", "start1", "end1", "chrom2", "start2", "end2", "name", "score", "strand1", "strand2")
-    override def values: Seq[String] = Seq(chrom1, start1.toString, end1.toString, chrom2, start2.toString, end2.toString, name, score.toString, strand1.toString, strand2.toString)
-  }
+  ) extends Metric
 
   /** Companion object for [[BedPE]]. */
   object BedPE {

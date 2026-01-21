@@ -122,7 +122,9 @@ class SvPileup
    |side of an aligned segment when merging segments.""") slop: Int = 5,
  @arg(flag='t', doc="Optional bed file of target regions") targetsBed: Option[FilePath] = None,
  @arg(flag='T', doc="Requirement on if each side of the breakpoint must overlap a target.  Will always annotate each side of the breakpoint.")
- targetsBedRequirement: TargetBedRequirement.Requirement = TargetBedRequirement.AnnotateOnly
+ targetsBedRequirement: TargetBedRequirement.Requirement = TargetBedRequirement.AnnotateOnly,
+ @arg(doc="Whether to include duplicate marked records for breakpoint pileup or not.") val includeDuplicates: Boolean = false,
+ @arg(doc="Whether to include QC failed records for breakpoint pileup or not.") val includeQcFails: Boolean = false,
 ) extends SvTool {
 
   import SvPileup._
@@ -145,7 +147,15 @@ class SvPileup
 
     Bams.templateIterator(source)
       .tapEach(t => progress.record(t.allReads.next()))
-      .flatMap(template => filterTemplate(template, minPrimaryMapq=minPrimaryMappingQuality, minSupplementaryMapq=minSupplementaryMappingQuality))
+      .flatMap { template =>
+        filterTemplate(
+          template,
+          minPrimaryMapq       = minPrimaryMappingQuality,
+          minSupplementaryMapq = minSupplementaryMappingQuality,
+          includeDuplicates    = includeDuplicates,
+          includeQcFails       = includeQcFails,
+        )
+      }
       .foreach { template =>
         // Find the breakpoints
         val evidences = findBreakpoints(
@@ -297,18 +307,25 @@ object SvPileup extends LazyLogging {
    */
   def filterTemplate(t: Template,
                      minPrimaryMapq: Int,
-                     minSupplementaryMapq: Int): Option[Template] = {
-    val r1PrimaryOk = t.r1.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
-    val r2PrimaryOk = t.r2.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
+                     minSupplementaryMapq: Int,
+                     includeDuplicates: Boolean = false,
+                     includeQcFails: Boolean = false): Option[Template] = {
+    t.allReads.filter(rec => (includeDuplicates || !rec.duplicate) && (includeQcFails || rec.pf)).toList match {
+      case Nil     => None
+      case records =>
+        val filteredTemplate = Template(records.iterator)
+        val r1PrimaryOk = filteredTemplate.r1.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
+        val r2PrimaryOk = filteredTemplate.r2.exists(r => r.mapped && r.mapq >= minPrimaryMapq)
 
-    if (!r1PrimaryOk && !r2PrimaryOk) None else Some(
-      Template(
-        r1              = if (r1PrimaryOk) t.r1 else None,
-        r2              = if (r2PrimaryOk) t.r2 else None,
-        r1Supplementals = if (r1PrimaryOk) t.r1Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
-        r2Supplementals = if (r2PrimaryOk) t.r2Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
-      )
-    )
+        if (!r1PrimaryOk && !r2PrimaryOk) None else Some(
+          Template(
+            r1              = if (r1PrimaryOk) filteredTemplate.r1 else None,
+            r2              = if (r2PrimaryOk) filteredTemplate.r2 else None,
+            r1Supplementals = if (r1PrimaryOk) filteredTemplate.r1Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
+            r2Supplementals = if (r2PrimaryOk) filteredTemplate.r2Supplementals.filter(_.mapq >= minSupplementaryMapq) else Nil,
+          )
+        )
+    }
   }
 
 

@@ -1,6 +1,7 @@
 package com.fulcrumgenomics.sv.tools
 
 import com.fulcrumgenomics.commons.io.Io
+import com.fulcrumgenomics.commons.reflect.ReflectiveBuilder
 import com.fulcrumgenomics.commons.util.DelimitedDataParser
 import com.fulcrumgenomics.sv.UnitSpec
 import com.fulcrumgenomics.sv.tools.AggregateSvPileupToBedPE.BedPE.BedPEWriter
@@ -81,7 +82,7 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
     writer.write(record)
     writer.close()
 
-    val fields: Seq[String] = record.names
+    val fields: Seq[String] = new ReflectiveBuilder(classOf[BedPE]).argumentLookup.ordered.map(_.name)
     val records = DelimitedDataParser(output, delimiter = '\t', header = fields).toSeq
     records.length shouldBe 1
     val actual = fields.map(field => records.head.get[String](field).value)
@@ -108,7 +109,7 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
 
     new AggregateSvPileupToBedPE(input = input, output = output).execute()
 
-    val fields: Seq[String] = test_bed_pe.names
+    val fields: Seq[String] = new ReflectiveBuilder(classOf[BedPE]).argumentLookup.ordered.map(_.name)
     val records = DelimitedDataParser(output, delimiter = '\t', header = fields).toSeq
     records.length shouldBe 1
     val actual = fields.map(field => records.head.get[String](field).value)
