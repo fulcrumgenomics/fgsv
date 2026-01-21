@@ -2,25 +2,13 @@ name: unit tests and docs
 
 on: [push, pull_request]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Setup Scala
-        uses: olafurpg/setup-scala@v12
-        with:
-          java-version: adopt-openj9@1.8.0-292
-      - name: Unit Tests
-        run: |
-          set -e
-          ./mill _.test
   docs:
     name: update tool and metric markdown docs
-    needs: test
     runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     steps:
@@ -73,3 +61,21 @@ jobs:
           commit_user_name: nh13
           commit_user_email: nils@fulcrumgenomics.com
           commit_author: nh13 <nils@fulcrumgenomics.com>
+  test:
+    runs-on: ubuntu-24.04
+    needs: docs
+    if: always() && (needs.docs.result == 'success' || needs.docs.result == 'skipped')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || '' }}
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v12
+        with:
+          java-version: adopt-openj9@1.8.0-292
+      - name: Unit Tests
+        run: |
+          set -e
+          ./mill _.test
