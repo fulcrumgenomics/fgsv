@@ -49,6 +49,11 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
     BedPE(test_aggregate_breakpoint_pileup) shouldBe test_bed_pe
   }
 
+  /** The expected BedPE field names in order. */
+  private val BedPEFields: Seq[String] = Seq(
+    "chrom1", "start1", "end1", "chrom2", "start2", "end2", "name", "score", "strand1", "strand2"
+  )
+
   "AggregateSvPileupToBedPE.BedPEWriter" should "write a BedPE record" in {
     val record = new BedPE(
       chrom1  = "chr1",
@@ -81,10 +86,9 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
     writer.write(record)
     writer.close()
 
-    val fields: Seq[String] = classOf[BedPE].getDeclaredFields.map(_.getName).toIndexedSeq
-    val records = DelimitedDataParser(output, delimiter = '\t', header = fields).toSeq
+    val records = DelimitedDataParser(output, delimiter = '\t', header = BedPEFields).toSeq
     records.length shouldBe 1
-    val actual = fields.map(field => records.head.get[String](field).value)
+    val actual = BedPEFields.map(field => records.head.get[String](field).value)
     actual should contain theSameElementsInOrderAs expected
   }
 
@@ -108,10 +112,9 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
 
     new AggregateSvPileupToBedPE(input = input, output = output).execute()
 
-    val fields: Seq[String] = classOf[BedPE].getDeclaredFields.map(_.getName).toIndexedSeq
-    val records = DelimitedDataParser(output, delimiter = '\t', header = fields).toSeq
+    val records = DelimitedDataParser(output, delimiter = '\t', header = BedPEFields).toSeq
     records.length shouldBe 1
-    val actual = fields.map(field => records.head.get[String](field).value)
+    val actual = BedPEFields.map(field => records.head.get[String](field).value)
     actual should contain theSameElementsInOrderAs expected
   }
 }
