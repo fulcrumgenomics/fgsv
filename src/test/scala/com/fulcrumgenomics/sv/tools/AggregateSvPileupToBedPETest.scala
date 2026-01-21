@@ -1,6 +1,7 @@
 package com.fulcrumgenomics.sv.tools
 
 import com.fulcrumgenomics.commons.io.Io
+import com.fulcrumgenomics.commons.reflect.ReflectiveBuilder
 import com.fulcrumgenomics.commons.util.DelimitedDataParser
 import com.fulcrumgenomics.sv.UnitSpec
 import com.fulcrumgenomics.sv.tools.AggregateSvPileupToBedPE.BedPE.BedPEWriter
@@ -49,11 +50,6 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
     BedPE(test_aggregate_breakpoint_pileup) shouldBe test_bed_pe
   }
 
-  /** The expected BedPE field names in order. */
-  private val BedPEFields: Seq[String] = Seq(
-    "chrom1", "start1", "end1", "chrom2", "start2", "end2", "name", "score", "strand1", "strand2"
-  )
-
   "AggregateSvPileupToBedPE.BedPEWriter" should "write a BedPE record" in {
     val record = new BedPE(
       chrom1  = "chr1",
@@ -86,9 +82,10 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
     writer.write(record)
     writer.close()
 
-    val records = DelimitedDataParser(output, delimiter = '\t', header = BedPEFields).toSeq
+    val fields: Seq[String] = new ReflectiveBuilder(classOf[BedPE]).argumentLookup.ordered.map(_.name)
+    val records = DelimitedDataParser(output, delimiter = '\t', header = fields).toSeq
     records.length shouldBe 1
-    val actual = BedPEFields.map(field => records.head.get[String](field).value)
+    val actual = fields.map(field => records.head.get[String](field).value)
     actual should contain theSameElementsInOrderAs expected
   }
 
@@ -112,9 +109,10 @@ class AggregateSvPileupToBedPETest extends UnitSpec {
 
     new AggregateSvPileupToBedPE(input = input, output = output).execute()
 
-    val records = DelimitedDataParser(output, delimiter = '\t', header = BedPEFields).toSeq
+    val fields: Seq[String] = new ReflectiveBuilder(classOf[BedPE]).argumentLookup.ordered.map(_.name)
+    val records = DelimitedDataParser(output, delimiter = '\t', header = fields).toSeq
     records.length shouldBe 1
-    val actual = BedPEFields.map(field => records.head.get[String](field).value)
+    val actual = fields.map(field => records.head.get[String](field).value)
     actual should contain theSameElementsInOrderAs expected
   }
 }

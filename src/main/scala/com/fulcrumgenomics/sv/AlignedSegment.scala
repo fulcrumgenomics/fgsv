@@ -48,13 +48,13 @@ case class AlignedSegment(origin: SegmentOrigin,
   }
 
   /** Merges the other segment with itself, returning a new alignment segment.  The two segments must overlap on the genome
-   * and map to teh same strand.  If merging segments from different reads (i.e. R1 and R2), the segment origin will be set
+   * and map to the same strand.  If merging segments from different reads (i.e. R1 and R2), the segment origin will be set
    * to both.  The resulting cigar will be empty, and the start and end offset in the read will both be 1.
    *
    * @param other the other segment to merge
    * @param slop the existing tracked records in this or other will be tracked in the new alignment based on being within
    *             the given slop of the new segments' left-most or right-most position respectively.
-   * @return
+   * @return the merged alignment segment
    */
   def merge(other: AlignedSegment, slop: Int = 0): AlignedSegment = {
     require(this.overlapsWithStrand(other))
@@ -249,7 +249,7 @@ object AlignedSegment extends LazyLogging {
    * @param numOverlappingSegments the # of overlapping segments to examine
    * @param slop                   the number of bases of slop to allow when determining which records to track for the
    *                               left or right side of an aligned segment when merging segments
-   * @return
+   * @return the merged alignment segments with overlapping R1/R2 segments combined
    */
   @tailrec
   def mergeAlignedSegments(r1Segments: IndexedSeq[AlignedSegment],
@@ -280,10 +280,26 @@ sealed trait SegmentOrigin extends EnumEntry {
   import SegmentOrigin._
 
   /** Returns whether this origin and the other origin are R1 and R2, or R2 and R1, respectively.
-   * This treats Both as being from either R1 and R2. */
+   * This treats Both as being from either R1 and R2.
+   *
+   * Examples:
+   *   ReadOne.isPairedWith(ReadTwo) = true
+   *   ReadTwo.isPairedWith(ReadOne) = true
+   *   ReadOne.isPairedWith(ReadOne) = false
+   *   Both.isPairedWith(Both) = true (special case: merged segments can pair with other merged segments)
+   *   Both.isPairedWith(ReadOne) = true
+   */
   def isPairedWith(other: SegmentOrigin): Boolean = this != other || (this == SegmentOrigin.Both && other == SegmentOrigin.Both)
 
-  /** Returns true if both `this` and `that` represent a single read and the two reads are different (i.e. R1 and R2). */
+  /** Returns true if both `this` and `that` represent a single read and the two reads are different (i.e. R1 and R2).
+   * This is used to distinguish between split-read evidence (within one read) and read-pair evidence (between R1 and R2).
+   *
+   * Examples:
+   *   ReadOne.isInterRead(ReadTwo) = true  (evidence spans between R1 and R2)
+   *   ReadOne.isInterRead(ReadOne) = false (evidence is within R1 only)
+   *   ReadOne.isInterRead(Both) = false    (merged segment doesn't count as inter-read)
+   *   Both.isInterRead(Both) = false
+   */
   def isInterRead(that: SegmentOrigin): Boolean = {
     this != Both && that != Both && this != that
   }

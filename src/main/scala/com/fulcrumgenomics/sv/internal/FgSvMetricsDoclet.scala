@@ -5,12 +5,15 @@ import com.fulcrumgenomics.util.Metric
 
 import java.io.PrintStream
 import java.nio.file.Paths
+import scala.annotation.unused
 import scala.reflect.internal.Reporter
+import scala.tools.nsc.Settings
 import scala.tools.nsc.doc.base.comment._
 import scala.tools.nsc.doc.model.DocTemplateEntity
+import scala.tools.nsc.reporters.ConsoleReporter
 
 // NB: this is almost fully copied from FgMetricsDoclet so that the output path and file name can be customized.
-class FgSvMetricsDoclet(reporter: Reporter) extends FgMetricsDoclet(reporter) {
+class FgSvMetricsDoclet(@unused reporter: Reporter) extends FgMetricsDoclet(new ConsoleReporter(new Settings())) {
   /**
    * Main entry point for the doclet.  Scans for documentation for the metrics classes and
    * renders it into MarkDown.

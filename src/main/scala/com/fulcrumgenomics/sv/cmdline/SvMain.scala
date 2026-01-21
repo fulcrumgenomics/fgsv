@@ -14,7 +14,10 @@ object SvMain {
 
 class SvMain extends FgBioMain {
 
-  // HACK
+  // Enable asynchronous I/O by default for all BAM/SAM/VCF operations to improve performance.
+  // This is done globally at startup to avoid having to specify it for every I/O operation.
+  // Async I/O performs read-ahead buffering and background writing, significantly reducing
+  // I/O wait time for sequential access patterns common in genomics pipelines.
   SamSource.DefaultUseAsyncIo = true
   SamWriter.DefaultUseAsyncIo = true
   VcfWriter.DefaultUseAsyncIo = true

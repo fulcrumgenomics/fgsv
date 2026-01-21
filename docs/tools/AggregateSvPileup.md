@@ -31,7 +31,7 @@ straddle a breakend are considered to cross the breakend.
 If a BED file of target regions is provided, each aggregated pileup is annotated with whether its left and
 right sides overlap a target region.  Additionally, the names of the overlapping target regions will be
 annotated, overwriting any values from the `SvPileup` input.  If no target regions are provided, then the names
-of the overlapping target regions are copied from the `SvPiluep` input (if present).
+of the overlapping target regions are copied from the `SvPileup` input (if present).
 
 The output file is a tab-delimited table with one record per aggregated cluster of pileups. Aggregated
 pileups are reported with the minimum and maximum (inclusive) coordinates of all pileups in the cluster, a
