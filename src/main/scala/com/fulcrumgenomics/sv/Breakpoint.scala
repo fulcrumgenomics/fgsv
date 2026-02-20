@@ -14,8 +14,8 @@ object Breakpoint {
    * segments could be from different reads in a mate pair, this cannot be validated/required()
    * in this method, but violating this assumption will lead to invalid breakpoints.
    *
-   * @param into the segment earlier in sequencing order
-   * @param from the segment later in sequencing order
+   * @param from the segment earlier in sequencing order
+   * @param into the segment later in sequencing order
    * @param canonicalize canonicalize the breakpoint such that the `left` side of the breakpoint will have the lower
    *                     (or equal to) position on the genome vs. the `right` side.
    */
