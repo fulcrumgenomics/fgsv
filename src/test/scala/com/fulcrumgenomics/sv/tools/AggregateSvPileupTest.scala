@@ -274,7 +274,7 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val expAgg1 = AggregatedBreakpointPileup(
-      id             = "112_456_5_7_8_9",
+      id             = "5_7_8_9_112_456",
       category       = "Inter-contig rearrangement",
       left_contig    = "chr1",
       left_min_pos   = 100,
@@ -363,7 +363,7 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val expAgg1 = AggregatedBreakpointPileup(
-      id             = "10_7_8_9",
+      id             = "7_8_9_10",
       category       = "Inter-contig rearrangement",
       left_contig    = "chr1",
       left_min_pos   = 400,
@@ -426,7 +426,7 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val expAgg = AggregatedBreakpointPileup(
-      id             = "10_7_8_9",
+      id             = "7_8_9_10",
       category       = "Inter-contig rearrangement",
       left_contig    = "chr1",
       left_min_pos   = 400,
@@ -462,7 +462,7 @@ class AggregateSvPileupTest extends UnitSpec {
     )
 
     val expAgg = AggregatedBreakpointPileup(
-      id             = "10_7_8_9",
+      id             = "7_8_9_10",
       category       = "Inter-contig rearrangement",
       left_contig    = "chr1",
       left_min_pos   = 400,
