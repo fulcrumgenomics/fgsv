@@ -437,8 +437,11 @@ case class AggregatedBreakpointPileup(id: String,
       val rec = samIter.next()
       if (!overlappers.contains(rec.name)) {
         if (checkAsPair(rec)) {
+          val mateEnd = rec.mateEnd.getOrElse(throw new IllegalArgumentException(
+            s"Record '${rec.name}' is paired with a mapped mate on the same contig but has no mate end position. " +
+            "Ensure the BAM file contains the MC (mate CIGAR) tag, e.g. by running samtools fixmate."))
           if (breakends.positions.exists(
-            pos => pos >= Math.min(rec.start, rec.mateStart) && pos <= Math.max(rec.end, rec.mateEnd.get))) {
+            pos => pos >= Math.min(rec.start, rec.mateStart) && pos <= Math.max(rec.end, mateEnd))) {
             overlappers.add(rec.name)
           }
         } else if (breakends.positions.exists(pos => pos >= rec.start && pos <= rec.end)) {
