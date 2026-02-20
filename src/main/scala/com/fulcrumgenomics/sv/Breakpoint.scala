@@ -96,10 +96,12 @@ case class Breakpoint(leftRefIndex: Int,
   )
 
   /** Returns true if the representation of the breakpoint is canonical, with the left hand side of the break
-   * earlier on the genome than the right hand side. */
+   * earlier on the genome than the right hand side.  When both breakends are at the same position, the breakpoint
+   * is canonical if at least one strand is positive.  This handles the fixed-point cases where `reversed` produces
+   * an identical breakpoint (e.g. same position with leftPositive=false, rightPositive=true). */
   def isCanonical: Boolean = (leftRefIndex < rightRefIndex) ||
     (leftRefIndex == rightRefIndex && leftPos < rightPos) ||
-    (leftRefIndex == rightRefIndex && leftPos == rightPos && leftPositive)
+    (leftRefIndex == rightRefIndex && leftPos == rightPos && (leftPositive || rightPositive))
 
   /** Returns an [[Interval]] for the left side of this breakpoint */
   def leftInterval(dict: SequenceDictionary): Interval = new Interval(

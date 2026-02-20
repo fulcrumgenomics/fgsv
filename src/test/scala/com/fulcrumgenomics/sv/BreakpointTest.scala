@@ -79,7 +79,21 @@ class BreakpointTest extends UnitSpec {
     (rbp.rightPos, rbp.rightPositive) shouldBe (1000, true)
   }
 
-  it should "represent a tandem duplication sanely" in {
+  "Breakpoint.isCanonical" should "treat all strand combinations at the same position as canonical except (F, F)" in {
+    val base = Breakpoint(leftRefIndex=0, leftPos=100, leftPositive=true, rightRefIndex=0, rightPos=100, rightPositive=true)
+
+    // (T, T) at same position: canonical
+    base.copy(leftPositive=true,  rightPositive=true).isCanonical  shouldBe true
+    // (T, F) at same position: canonical (fixed-point of reversed)
+    base.copy(leftPositive=true,  rightPositive=false).isCanonical shouldBe true
+    // (F, T) at same position: canonical (fixed-point of reversed)
+    base.copy(leftPositive=false, rightPositive=true).isCanonical  shouldBe true
+    // (F, F) at same position: NOT canonical, reversed gives (T, T)
+    base.copy(leftPositive=false, rightPositive=false).isCanonical shouldBe false
+    base.copy(leftPositive=false, rightPositive=false).reversed.isCanonical shouldBe true
+  }
+
+  "Breakpoint.apply(segment, segment)" should "represent a tandem duplication sanely" in {
     // We want the same representation regardless of which piece of the duplication was sequenced more so
     // we test where the second segment is shorter, the same length as, and longer than the first
     Seq(-1, 0, 1).foreach { addend =>
