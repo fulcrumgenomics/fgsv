@@ -22,7 +22,7 @@ import scala.collection.{BitSet, mutable}
  * @param left           the records from which this aligned segment originated from and abut the left genomic range of
  *                       this segment.  May contain multiple if two aligned segments were merged, and be empty if not
  *                       tracking.
- * @param right          the records from which this aligned segment originated from and abut the left genomic range of
+ * @param right          the records from which this aligned segment originated from and abut the right genomic range of
  *                       this segment.  May contain multiple if two aligned segments were merged, and be empty if not
  *                       tracking.
  */
