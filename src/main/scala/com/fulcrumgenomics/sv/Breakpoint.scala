@@ -72,11 +72,11 @@ case class Breakpoint(leftRefIndex: Int,
 
   /** Orders breakpoints by their left genomic position then their right genomic position. */
   override def compare(that: Breakpoint): Int = {
-    var result              = this.leftRefIndex - that.leftRefIndex
-    if (result == 0) result = this.leftPos - that.leftPos
+    var result              = this.leftRefIndex.compare(that.leftRefIndex)
+    if (result == 0) result = this.leftPos.compare(that.leftPos)
     if (result == 0) result = this.leftPositive.compare(that.leftPositive)
-    if (result == 0) result = this.rightRefIndex - that.rightRefIndex
-    if (result == 0) result = this.rightPos - that.rightPos
+    if (result == 0) result = this.rightRefIndex.compare(that.rightRefIndex)
+    if (result == 0) result = this.rightPos.compare(that.rightPos)
     if (result == 0) result = this.rightPositive.compare(that.rightPositive)
     result
   }
