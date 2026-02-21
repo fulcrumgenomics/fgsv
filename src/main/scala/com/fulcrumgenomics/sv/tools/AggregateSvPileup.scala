@@ -294,8 +294,8 @@ case class AggregatedBreakpointPileup(id: String,
                                       right_targets: Option[String] = None
                                      ) extends Metric with LazyLogging {
 
-  /** Returns the IDs of constituent breakpoints */
-  def pileupIds(): Seq[String] = id.split("_").toSeq.sorted
+  /** Returns the IDs of constituent breakpoints, sorted numerically */
+  def pileupIds(): Seq[String] = id.split("_").toSeq.sortBy(_.toInt)
 
   /** Combines the comma-delimited list of target strings when aggregating the `left_targets` and `right_target` fields. */
   private def combineTargetStrings(first: Option[String], second: Option[String]): Option[String] = {
@@ -317,7 +317,7 @@ case class AggregatedBreakpointPileup(id: String,
     assert(pileup.right_strand == right_strand)
 
     AggregatedBreakpointPileup(
-      id              = pileupIds().appended(pileup.id).sorted.mkString("_"),
+      id              = pileupIds().appended(pileup.id).sortBy(_.toInt).mkString("_"),
       category        = category,
       left_contig     = left_contig,
       left_min_pos    = Math.min(left_min_pos, pileup.left_pos),
