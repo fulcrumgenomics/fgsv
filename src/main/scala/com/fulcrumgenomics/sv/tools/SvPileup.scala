@@ -189,11 +189,12 @@ class SvPileup
       }
 
     progress.logLast()
+    val dict = source.dict
     source.safelyClose()
     bamOut.close()
 
     // Write the results
-    writeBreakpoints(path=PathUtil.pathTo(s"$output.txt"), tracker=tracker, dict=source.dict, targets=targets)
+    writeBreakpoints(path=PathUtil.pathTo(s"$output.txt"), tracker=tracker, dict=dict, targets=targets)
   }
 
   /** Annotates the reads for the given template and writes them to the writer if provided.
