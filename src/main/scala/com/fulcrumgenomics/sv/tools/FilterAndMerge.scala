@@ -105,8 +105,8 @@ object MergedPileup {
     val readPairs  = pileups.sumBy(_.read_pairs)
     val counts     = NumericCounter(pileups.map(_.total).iterator)
     val total      = splitReads + readPairs
-    val leftMean   = pileups.iterator.map(p => p.total * p.left_pos / total).sum
-    val rightMean  = pileups.iterator.map(p => p.total * p.right_pos / total).sum
+    val leftMean   = (pileups.iterator.map(p => p.total.toLong * p.left_pos).sum / total).toInt
+    val rightMean  = (pileups.iterator.map(p => p.total.toLong * p.right_pos).sum / total).toInt
     val meanCount  = counts.mean()
 
     new MergedPileup(
