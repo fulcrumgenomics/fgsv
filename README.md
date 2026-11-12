@@ -97,6 +97,21 @@ One shortcoming of the existing behavior, which should be corrected at some poin
 
 The tool outputs a table of aggregated breakpoints and a modified copy of the input BAM file where each alignment is tagged with the ID of the aggregate breakpoint it supports (if any).
 
+### `RescueSvJunction`
+
+Realigns soft-clipped reads to one supplied, oriented junction using the original coordinate-sorted, indexed BAM and an indexed reference FASTA.
+
+```console
+fgsv RescueSvJunction \
+    --input sample.coordinate.bam \
+    --reference reference.fa \
+    --output sample.junction-support.txt \
+    --left-contig chr1 --left-position 30000 --left-strand=+ \
+    --right-contig chr1 --right-position 32001 --right-strand=+
+```
+
+The tool requires at least 10 aligned bases on each side by default and compares the junction alignment with both local reference alternatives. It reports one qualifying alignment per template, including templates already supported by discovery. Union template identities with existing evidence rather than adding output row counts to pileup totals. The tool does not change BAM records, discovery counts, or allele frequencies. Its scores describe local alignment evidence, not genotype likelihoods or genome-wide mapping confidence. See the [tool documentation](docs/tools/RescueSvJunction.md) for scoring, parameters, and coordinate conventions.
+
 ### `AggregateSvPileupToBedPE`
 
 Converts the output of `AggregateSvPileup` to the [BEDPE format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).

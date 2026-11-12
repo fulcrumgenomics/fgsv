@@ -16,6 +16,7 @@ the type of each field/column is given, including two commonly used types:
 |[BedPE](#bedpe)|A simple BEDPE record as defined by [`bedtools`](https://bedtools|
 |[BreakpointPileup](#breakpointpileup)|Represents a pileup of evidence (reads, read-pairs) for a breakpoint|
 |[MergedPileup](#mergedpileup)||
+|[RescuedJunctionTemplate](#rescuedjunctiontemplate)|One qualifying template for the supplied junction; all coordinates are 1-based inclusive|
 
 ## Metric File Descriptions
 
@@ -117,3 +118,36 @@ the only information comes from read-pairs and the breakpoint information should
 |split_reads|Int||
 |read_pairs|Int||
 |total_evidence|Int||
+
+
+### RescuedJunctionTemplate
+
+One qualifying template for the supplied junction; all coordinates are 1-based inclusive.
+
+
+|Column|Type|Description|
+|------|----|-----------|
+|left_contig|String|Supplied left/from breakend contig|
+|left_position|Int|Supplied left/from breakend position on the reference|
+|left_strand|String|Supplied left/from breakend strand (+ or -)|
+|right_contig|String|Supplied right/into breakend contig|
+|right_position|Int|Supplied right/into breakend position on the reference|
+|right_strand|String|Supplied right/into breakend strand (+ or -)|
+|junction_boundary|Int|Actual incoming flank length after clamping; the last left-side target base|
+|template|String|BAM query/template name; existing discovery supporters are not excluded|
+|read_number|Int|Representative read number: 0 for unpaired, 1 for first, 2 for second|
+|contig|String|Representative original BAM alignment contig|
+|position|Int|Representative original BAM alignment start|
+|original_cigar|String|Representative original BAM CIGAR|
+|score|Int|Junction Smith-Waterman alignment score|
+|reference_score|Int|Best score against either local reference alternative in either query orientation|
+|left_anchor|Int|Canonical aligned columns on the incoming side, including mismatches but not gaps/N|
+|right_anchor|Int|Canonical aligned columns on the outgoing side, including mismatches but not gaps/N|
+|query_start|Int|Alignment start on the query orientation indicated by query_reversed|
+|query_end|Int|Alignment end on the query orientation indicated by query_reversed|
+|target_start|Int|Alignment start on the oriented synthetic junction|
+|target_end|Int|Alignment end on the oriented synthetic junction|
+|junction_cigar|String|Realigned CIGAR against the synthetic junction, not a replacement BAM CIGAR|
+|query_reversed|Boolean|True if query coordinates use reverse-complemented SAM-stored bases|
+|identity|Double|Fraction of aligned columns that are canonical matching bases|
+|query_coverage|Double|Fraction of observed query bases included in the junction alignment|
